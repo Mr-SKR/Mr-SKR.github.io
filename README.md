@@ -1,2 +1,3 @@
 # Mr-SKR.github.io
-[My Portfolio](https://mr-skr.github.io/)
+
+Click [here to access my e-resume](https://mr-skr.github.io/)
