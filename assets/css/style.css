@@ -481,6 +481,7 @@ section {
 
 .skills .logo {
   display: flex;
+  text-align: center;
   align-items: center;
   flex-wrap: wrap;
 }
