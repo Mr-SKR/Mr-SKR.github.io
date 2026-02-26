@@ -27,6 +27,137 @@
 
     <!-- Template Main CSS File -->
     <link href="assets/css/style.css" rel="stylesheet" />
+    <style>
+        .diff-row {
+            display: flex;
+            border-bottom: 1px solid #eee;
+            width: 100%;
+        }
+
+        .diff-col {
+            flex: 1;
+            padding: 5px;
+            font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .diff-col:first-child {
+            border-right: 1px solid #999;
+        }
+
+        .diff-added {
+            background-color: #e6ffec;
+            color: #28a745;
+        }
+
+        .diff-removed {
+            background-color: #ffebe9;
+            color: #dc3545;
+        }
+
+        .diff-spacer {
+            background-color: #f8f9fa;
+        }
+
+        .diff-highlight {
+            outline: 2px solid #007bff;
+            z-index: 1;
+            position: relative;
+        }
+
+        .diff-inline-span {
+            display: inline-block;
+            width: 100%;
+        }
+
+        .sticky-controls {
+            position: -webkit-sticky;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background-color: #fff;
+            padding: 10px 0;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        #tools {
+            overflow: visible;
+        }
+
+        .line-number,
+        .diff-line-num {
+            user-select: none;
+            -webkit-user-select: none;
+            color: #999;
+            text-align: right;
+            min-width: 35px;
+            margin-right: 10px;
+            padding-right: 5px;
+            border-right: 1px solid #ddd;
+            display: inline-block;
+        }
+
+        .code-line,
+        .diff-line-wrapper {
+            display: flex;
+        }
+
+        .line-content,
+        .diff-line-content {
+            flex: 1;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .editor-container {
+            display: flex;
+            border: 1px solid #ced4da;
+            border-radius: 0.25rem;
+            overflow: hidden;
+            background-color: #fff;
+            resize: vertical;
+            height: 16rem;
+        }
+
+        .editor-line-numbers {
+            background-color: #f8f9fa;
+            border-right: 1px solid #ced4da;
+            padding: 0.375rem 0.5rem;
+            text-align: right;
+            color: #999;
+            font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            font-size: 1rem;
+            line-height: 1.5;
+            min-width: 45px;
+            user-select: none;
+            overflow: hidden;
+            min-height: 0;
+            height: 100%;
+        }
+
+        .editor-textarea {
+            border: none !important;
+            box-shadow: none !important;
+            resize: none;
+            white-space: pre;
+            font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            font-size: 1rem;
+            line-height: 1.5;
+            padding: 0.375rem 0.75rem;
+            flex: 1;
+            height: 100%;
+        }
+
+        #jsonOutput,
+        #diffOutput {
+            scroll-margin-top: 80px;
+        }
+
+        .diff-change {
+            scroll-margin-top: 100px;
+        }
+    </style>
 </head>
 
 <body>
@@ -86,6 +217,18 @@
                         <a class="nav-link" id="jwt-encode-tab" data-toggle="tab" href="#jwt-encode" role="tab"
                             aria-controls="jwt-encode" aria-selected="false">JWT Encoder</a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="base64-tab" data-toggle="tab" href="#base64" role="tab"
+                            aria-controls="base64" aria-selected="false">Base64</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="url-tab" data-toggle="tab" href="#url" role="tab" aria-controls="url"
+                            aria-selected="false">URL Encoder/Decoder</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="yaml-json-tab" data-toggle="tab" href="#yaml-json" role="tab"
+                            aria-controls="yaml-json" aria-selected="false">YAML <> JSON</a>
+                    </li>
                 </ul>
                 <div class="tab-content pt-3" id="toolsTabContent">
                     <!-- JSON Formatter -->
@@ -93,32 +236,43 @@
                         <div class="form-group">
                             <div class="d-flex justify-content-between align-items-center">
                                 <label for="jsonInput">Input JSON</label>
-                                <button class="btn btn-sm btn-outline-secondary mb-2" id="jsonInputCopyBtn"
-                                    onclick="copyToClipboard('jsonInput', this)" disabled>Copy</button>
+                                <div>
+                                    <input type="file" id="jsonInputFile" accept=".json,.txt" style="display: none;"
+                                        onchange="handleFileUpload(this, 'jsonInput', 'jsonInputCopyBtn')">
+                                    <button class="btn btn-sm btn-outline-secondary mb-2 mr-1"
+                                        onclick="document.getElementById('jsonInputFile').click()"><i
+                                            class="bx bx-upload"></i> Upload</button>
+                                    <button class="btn btn-sm btn-outline-secondary mb-2" id="jsonInputCopyBtn"
+                                        onclick="copyToClipboard('jsonInput', this)" disabled>Copy</button>
+                                </div>
                             </div>
-                            <textarea class="form-control" id="jsonInput" rows="5"
-                                oninput="checkInput('jsonInput', 'jsonInputCopyBtn')"
-                                placeholder="Paste your JSON here..."></textarea>
+                            <div class="editor-container">
+                                <div class="editor-line-numbers" id="jsonInputLineNums"></div>
+                                <textarea class="form-control editor-textarea" id="jsonInput" rows="10"
+                                    oninput="checkInput('jsonInput', 'jsonInputCopyBtn')"
+                                    placeholder="Paste your JSON here..."></textarea>
+                            </div>
                         </div>
-                        <div class="form-row align-items-center mb-3">
-                            <div class="col-auto my-1">
+                        <div class="d-flex align-items-center mb-3 sticky-controls">
+                            <div class="mr-2">
                                 <button class="btn btn-primary" onclick="formatJSON()">Format</button>
                             </div>
-                            <div class="col-auto my-1">
+                            <div>
                                 <select class="custom-select" id="jsonIndent">
                                     <option value="2">2 Spaces</option>
                                     <option value="4" selected>4 Spaces</option>
                                     <option value="tab">Tab</option>
                                 </select>
                             </div>
-                        </div>
-                        <div class="form-group">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <label for="jsonOutput">Formatted JSON</label>
-                                <button class="btn btn-sm btn-outline-secondary mb-2" id="jsonCopyBtn"
+                            <div class="ml-auto">
+                                <button class="btn btn-sm btn-outline-secondary" id="jsonCopyBtn"
                                     onclick="copyToClipboard('jsonOutput', this)" disabled>Copy</button>
                             </div>
-                            <textarea class="form-control" id="jsonOutput" rows="10" readonly></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="jsonOutput">Formatted JSON</label>
+                            <pre class="form-control h-auto" id="jsonOutput"
+                                style="min-height: 100px; background-color: #e9ecef;"></pre>
                         </div>
                     </div>
                     <!-- JSON Diff -->
@@ -128,32 +282,81 @@
                                 <div class="form-group">
                                     <div class="d-flex justify-content-between align-items-center">
                                         <label for="jsonDiff1">Original JSON</label>
-                                        <button class="btn btn-sm btn-outline-secondary mb-2" id="jsonDiff1CopyBtn"
-                                            onclick="copyToClipboard('jsonDiff1', this)" disabled>Copy</button>
+                                        <div>
+                                            <input type="file" id="jsonDiff1File" accept=".json,.txt"
+                                                style="display: none;"
+                                                onchange="handleFileUpload(this, 'jsonDiff1', 'jsonDiff1CopyBtn')">
+                                            <button class="btn btn-sm btn-outline-secondary mb-2 mr-1"
+                                                onclick="document.getElementById('jsonDiff1File').click()"><i
+                                                    class="bx bx-upload"></i> Upload</button>
+                                            <button class="btn btn-sm btn-outline-secondary mb-2" id="jsonDiff1CopyBtn"
+                                                onclick="copyToClipboard('jsonDiff1', this)" disabled>Copy</button>
+                                        </div>
                                     </div>
-                                    <textarea class="form-control" id="jsonDiff1" rows="10"
-                                        oninput="checkInput('jsonDiff1', 'jsonDiff1CopyBtn')"
-                                        placeholder="Paste original JSON here..."></textarea>
+                                    <div class="editor-container">
+                                        <div class="editor-line-numbers" id="jsonDiff1LineNums"></div>
+                                        <textarea class="form-control editor-textarea" id="jsonDiff1" rows="10"
+                                            oninput="checkInput('jsonDiff1', 'jsonDiff1CopyBtn')"
+                                            placeholder="Paste original JSON here..."></textarea>
+                                    </div>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="form-group">
                                     <div class="d-flex justify-content-between align-items-center">
                                         <label for="jsonDiff2">Modified JSON</label>
-                                        <button class="btn btn-sm btn-outline-secondary mb-2" id="jsonDiff2CopyBtn"
-                                            onclick="copyToClipboard('jsonDiff2', this)" disabled>Copy</button>
+                                        <div>
+                                            <input type="file" id="jsonDiff2File" accept=".json,.txt"
+                                                style="display: none;"
+                                                onchange="handleFileUpload(this, 'jsonDiff2', 'jsonDiff2CopyBtn')">
+                                            <button class="btn btn-sm btn-outline-secondary mb-2 mr-1"
+                                                onclick="document.getElementById('jsonDiff2File').click()"><i
+                                                    class="bx bx-upload"></i> Upload</button>
+                                            <button class="btn btn-sm btn-outline-secondary mb-2" id="jsonDiff2CopyBtn"
+                                                onclick="copyToClipboard('jsonDiff2', this)" disabled>Copy</button>
+                                        </div>
                                     </div>
-                                    <textarea class="form-control" id="jsonDiff2" rows="10"
-                                        oninput="checkInput('jsonDiff2', 'jsonDiff2CopyBtn')"
-                                        placeholder="Paste modified JSON here..."></textarea>
+                                    <div class="editor-container">
+                                        <div class="editor-line-numbers" id="jsonDiff2LineNums"></div>
+                                        <textarea class="form-control editor-textarea" id="jsonDiff2" rows="10"
+                                            oninput="checkInput('jsonDiff2', 'jsonDiff2CopyBtn')"
+                                            placeholder="Paste modified JSON here..."></textarea>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                        <button class="btn btn-primary mb-3" onclick="compareJSON()">Compare</button>
+                        <div class="d-flex justify-content-between align-items-center mb-3 sticky-controls">
+                            <button class="btn btn-primary" onclick="compareJSON()">Compare</button>
+                            <div id="diffControls" style="display: none;">
+                                <div class="btn-group btn-group-toggle mr-2" data-toggle="buttons">
+                                    <label class="btn btn-sm btn-outline-secondary active"
+                                        onclick="setDiffView('inline')">
+                                        <input type="radio" name="diffView" id="diffViewInline" autocomplete="off"
+                                            checked> Inline
+                                    </label>
+                                    <label class="btn btn-sm btn-outline-secondary"
+                                        onclick="setDiffView('side-by-side')">
+                                        <input type="radio" name="diffView" id="diffViewSide" autocomplete="off">
+                                        Side-by-Side
+                                    </label>
+                                </div>
+                                <div class="btn-group">
+                                    <button class="btn btn-sm btn-outline-secondary" id="diffPrevBtn"
+                                        onclick="navigateDiff(-1)" title="Previous Difference" disabled><i
+                                            class="bx bx-chevron-up"></i> Prev</button>
+                                    <span id="diffCount" class="btn btn-sm btn-outline-secondary disabled"
+                                        style="opacity: 1; cursor: default; background-color: #fff;">0/0</span>
+                                    <button class="btn btn-sm btn-outline-secondary" id="diffNextBtn"
+                                        onclick="navigateDiff(1)" title="Next Difference" disabled><i
+                                            class="bx bx-chevron-down"></i> Next</button>
+                                </div>
+                            </div>
+                        </div>
                         <div class="form-group">
                             <label>Difference</label>
-                            <pre class="form-control h-auto" id="diffOutput"
-                                style="min-height: 100px; background-color: #e9ecef; white-space: pre-wrap;"></pre>
+                            <div class="form-control h-auto" id="diffOutput"
+                                style="min-height: 100px; background-color: #e9ecef; padding: 0; overflow-x: hidden;">
+                            </div>
                         </div>
                     </div>
                     <!-- JWT Decoder -->
@@ -166,7 +369,7 @@
                             </div>
                             <textarea class="form-control" id="jwtInput" rows="3"
                                 placeholder="Paste your JWT token here..."
-                                oninput="checkInput('jwtInput', 'jwtInputCopyBtn')">eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.t-IDcSemACt8x4iTMCda8Yhe3iZaWbvV5XKSTbuAn0M</textarea>
+                                oninput="checkInput('jwtInput', 'jwtInputCopyBtn')">eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IlN1cmVzaCBSZWRkeSIsImlhdCI6MTUxNjIzOTAyMn0.t-IDcSemACt8x4iTMCda8Yhe3iZaWbvV5XKSTbuAn0M</textarea>
                         </div>
                         <div class="form-group">
                             <div class="d-flex justify-content-between align-items-center">
@@ -262,7 +465,7 @@
                                     <textarea class="form-control" id="jwtPayloadInput" rows="5"
                                         oninput="checkInput('jwtPayloadInput', 'jwtPayloadInputCopyBtn')">{
     "sub": "1234567890",
-    "name": "John Doe",
+    "name": "Suresh Reddy",
     "iat": 1516239022
 }</textarea>
                                 </div>
@@ -300,6 +503,95 @@
                                     onclick="copyToClipboard('jwtOutput', this)" disabled>Copy</button>
                             </div>
                             <textarea class="form-control" id="jwtOutput" rows="3" readonly></textarea>
+                        </div>
+                    </div>
+                    <!-- Base64 -->
+                    <div class="tab-pane fade" id="base64" role="tabpanel" aria-labelledby="base64-tab">
+                        <div class="form-group">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <label for="base64Input">Input</label>
+                                <button class="btn btn-sm btn-outline-secondary mb-2" id="base64InputCopyBtn"
+                                    onclick="copyToClipboard('base64Input', this)">Copy</button>
+                            </div>
+                            <textarea class="form-control" id="base64Input" rows="5" placeholder="Paste text here..."
+                                oninput="checkInput('base64Input', 'base64InputCopyBtn')"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <button class="btn btn-primary mr-2" onclick="base64Encode()">Encode</button>
+                            <button class="btn btn-primary" onclick="base64Decode()">Decode</button>
+                        </div>
+                        <div class="form-group">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <label for="base64Output">Output</label>
+                                <button class="btn btn-sm btn-outline-secondary mb-2" id="base64OutputCopyBtn"
+                                    onclick="copyToClipboard('base64Output', this)" disabled>Copy</button>
+                            </div>
+                            <textarea class="form-control" id="base64Output" rows="5" readonly></textarea>
+                        </div>
+                    </div>
+                    <!-- URL -->
+                    <div class="tab-pane fade" id="url" role="tabpanel" aria-labelledby="url-tab">
+                        <div class="form-group">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <label for="urlInput">Input</label>
+                                <button class="btn btn-sm btn-outline-secondary mb-2" id="urlInputCopyBtn"
+                                    onclick="copyToClipboard('urlInput', this)">Copy</button>
+                            </div>
+                            <textarea class="form-control" id="urlInput" rows="5" placeholder="Paste text here..."
+                                oninput="checkInput('urlInput', 'urlInputCopyBtn')"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <button class="btn btn-primary mr-2" onclick="urlEncode()">Encode</button>
+                            <button class="btn btn-primary" onclick="urlDecode()">Decode</button>
+                        </div>
+                        <div class="form-group">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <label for="urlOutput">Output</label>
+                                <button class="btn btn-sm btn-outline-secondary mb-2" id="urlOutputCopyBtn"
+                                    onclick="copyToClipboard('urlOutput', this)" disabled>Copy</button>
+                            </div>
+                            <textarea class="form-control" id="urlOutput" rows="5" readonly></textarea>
+                        </div>
+                    </div>
+                    <!-- YAML <> JSON -->
+                    <div class="tab-pane fade" id="yaml-json" role="tabpanel" aria-labelledby="yaml-json-tab">
+                        <div class="form-group">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <label for="yamlJsonInput">Input (YAML or JSON)</label>
+                                <div>
+                                    <input type="file" id="yamlJsonInputFile" accept=".json,.yaml,.yml,.txt"
+                                        style="display: none;"
+                                        onchange="handleFileUpload(this, 'yamlJsonInput', 'yamlJsonInputCopyBtn')">
+                                    <button class="btn btn-sm btn-outline-secondary mb-2 mr-1"
+                                        onclick="document.getElementById('yamlJsonInputFile').click()"><i
+                                            class="bx bx-upload"></i> Upload</button>
+                                    <button class="btn btn-sm btn-outline-secondary mb-2" id="yamlJsonInputCopyBtn"
+                                        onclick="copyToClipboard('yamlJsonInput', this)">Copy</button>
+                                </div>
+                            </div>
+                            <div class="editor-container">
+                                <div class="editor-line-numbers" id="yamlJsonInputLineNums"></div>
+                                <textarea class="form-control editor-textarea" id="yamlJsonInput" rows="10"
+                                    placeholder="Paste YAML or JSON here..."
+                                    oninput="checkInput('yamlJsonInput', 'yamlJsonInputCopyBtn')"></textarea>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center mb-3 sticky-controls">
+                            <div class="mr-2">
+                                <button class="btn btn-primary mr-2" onclick="yamlToJson()">YAML to JSON</button>
+                                <button class="btn btn-primary" onclick="jsonToYaml()">JSON to YAML</button>
+                            </div>
+                            <div class="ml-auto">
+                                <button class="btn btn-sm btn-outline-secondary mr-2" id="yamlJsonOutputDownloadBtn"
+                                    onclick="downloadYamlJsonOutput()" disabled>Download</button>
+                                <button class="btn btn-sm btn-outline-secondary" id="yamlJsonOutputCopyBtn"
+                                    onclick="copyToClipboard('yamlJsonOutput', this)" disabled>Copy</button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="yamlJsonOutput">Output</label>
+                            <pre class="form-control h-auto" id="yamlJsonOutput"
+                                style="min-height: 100px; background-color: #e9ecef;"></pre>
                         </div>
                     </div>
                 </div>
@@ -340,15 +632,25 @@
     <script src="assets/vendor/owl.carousel/owl.carousel.min.js"></script>
     <script src="assets/vendor/typed.js/typed.min.js"></script>
     <script src="assets/vendor/aos/aos.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jwt-decode@3.1.2/build/jwt-decode.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsdiff/5.1.0/diff.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/10.9.0/jsrsasign-all-min.js"></script>
+    <script src="assets/js/jwt-decode.min.js"></script>
+    <script src="assets/js/diff.min.js"></script>
+    <script src="assets/js/crypto-js.min.js"></script>
+    <script src="assets/js/jsrsasign-all-min.js"></script>
+    <script src="assets/js/js-yaml.min.js"></script>
 
     <script src="assets/js/tools.js"></script>
 
     <!-- Template Main JS File -->
     <script src="assets/js/main.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(registration => console.log('ServiceWorker registration successful'))
+                    .catch(err => console.log('ServiceWorker registration failed: ', err));
+            });
+        }
+    </script>
 </body>
 
 </html>
