@@ -238,7 +238,7 @@
                                 <label for="jsonInput">Input JSON</label>
                                 <div>
                                     <input type="file" id="jsonInputFile" accept=".json,.txt" style="display: none;"
-                                        onchange="handleFileUpload(this, 'jsonInput', 'jsonInputCopyBtn')">
+                                        onchange="handleJsonUpload(this)">
                                     <button class="btn btn-sm btn-outline-secondary mb-2 mr-1"
                                         onclick="document.getElementById('jsonInputFile').click()"><i
                                             class="bx bx-upload"></i> Upload</button>
@@ -253,20 +253,27 @@
                                     placeholder="Paste your JSON here..."></textarea>
                             </div>
                         </div>
-                        <div class="d-flex align-items-center mb-3 sticky-controls">
-                            <div class="mr-2">
-                                <button class="btn btn-primary" onclick="formatJSON()">Format</button>
-                            </div>
-                            <div>
-                                <select class="custom-select" id="jsonIndent">
-                                    <option value="2">2 Spaces</option>
-                                    <option value="4" selected>4 Spaces</option>
-                                    <option value="tab">Tab</option>
-                                </select>
-                            </div>
-                            <div class="ml-auto">
-                                <button class="btn btn-sm btn-outline-secondary" id="jsonCopyBtn"
-                                    onclick="copyToClipboard('jsonOutput', this)" disabled>Copy</button>
+                        <div class="sticky-controls mb-3">
+                            <div class="row align-items-center">
+                                <div class="col-lg-4 col-md-12 mb-2 mb-lg-0 d-flex align-items-center">
+                                    <button class="btn btn-primary mr-2" onclick="formatJSON()">Format</button>
+                                    <select class="custom-select" id="jsonIndent" style="width: auto;">
+                                        <option value="2">2 Spaces</option>
+                                        <option value="4" selected>4 Spaces</option>
+                                        <option value="tab">Tab</option>
+                                    </select>
+                                </div>
+                                <div class="col-lg-8 col-md-12">
+                                    <div class="d-flex flex-wrap justify-content-lg-end align-items-center">
+                                        <div class="custom-control custom-checkbox mr-3 mb-2">
+                                            <input type="checkbox" class="custom-control-input" id="jsonTimestamp" checked>
+                                            <label class="custom-control-label" for="jsonTimestamp">Append timestamp</label>
+                                        </div>
+                                        <input type="text" id="jsonFileName" class="form-control form-control-sm mr-2 mb-2" placeholder="Filename (optional)" style="width: 180px;">
+                                        <button class="btn btn-sm btn-outline-secondary mr-2 mb-2" id="jsonOutputDownloadBtn" onclick="downloadJsonOutput()" disabled>Download</button>
+                                        <button class="btn btn-sm btn-outline-secondary mb-2" id="jsonCopyBtn" onclick="copyToClipboard('jsonOutput', this)" disabled>Copy</button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         <div class="form-group">
@@ -561,7 +568,7 @@
                                 <div>
                                     <input type="file" id="yamlJsonInputFile" accept=".json,.yaml,.yml,.txt"
                                         style="display: none;"
-                                        onchange="handleFileUpload(this, 'yamlJsonInput', 'yamlJsonInputCopyBtn')">
+                                        onchange="handleYamlJsonUpload(this)">
                                     <button class="btn btn-sm btn-outline-secondary mb-2 mr-1"
                                         onclick="document.getElementById('yamlJsonInputFile').click()"><i
                                             class="bx bx-upload"></i> Upload</button>
@@ -576,16 +583,23 @@
                                     oninput="checkInput('yamlJsonInput', 'yamlJsonInputCopyBtn')"></textarea>
                             </div>
                         </div>
-                        <div class="d-flex align-items-center mb-3 sticky-controls">
-                            <div class="mr-2">
-                                <button class="btn btn-primary mr-2" onclick="yamlToJson()">YAML to JSON</button>
-                                <button class="btn btn-primary" onclick="jsonToYaml()">JSON to YAML</button>
-                            </div>
-                            <div class="ml-auto">
-                                <button class="btn btn-sm btn-outline-secondary mr-2" id="yamlJsonOutputDownloadBtn"
-                                    onclick="downloadYamlJsonOutput()" disabled>Download</button>
-                                <button class="btn btn-sm btn-outline-secondary" id="yamlJsonOutputCopyBtn"
-                                    onclick="copyToClipboard('yamlJsonOutput', this)" disabled>Copy</button>
+                        <div class="sticky-controls mb-3">
+                            <div class="row align-items-center">
+                                <div class="col-lg-4 col-md-12 mb-2 mb-lg-0">
+                                    <button class="btn btn-primary mr-2" onclick="yamlToJson()">YAML to JSON</button>
+                                    <button class="btn btn-primary" onclick="jsonToYaml()">JSON to YAML</button>
+                                </div>
+                                <div class="col-lg-8 col-md-12">
+                                    <div class="d-flex flex-wrap justify-content-lg-end align-items-center">
+                                        <div class="custom-control custom-checkbox mr-3 mb-2">
+                                            <input type="checkbox" class="custom-control-input" id="yamlJsonTimestamp" checked>
+                                            <label class="custom-control-label" for="yamlJsonTimestamp">Append timestamp to filename</label>
+                                        </div>
+                                        <input type="text" id="yamlJsonFileName" class="form-control form-control-sm mr-2 mb-2" placeholder="Filename (optional)" style="width: 180px;">
+                                        <button class="btn btn-sm btn-outline-secondary mr-2 mb-2" id="yamlJsonOutputDownloadBtn" onclick="downloadYamlJsonOutput()" disabled>Download</button>
+                                        <button class="btn btn-sm btn-outline-secondary mb-2" id="yamlJsonOutputCopyBtn" onclick="copyToClipboard('yamlJsonOutput', this)" disabled>Copy</button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         <div class="form-group">

@@ -1,11 +1,15 @@
+const htmlEscapes = {
+  "&": "&amp;",
+  "<": "&lt;",
+  ">": "&gt;",
+  '"': "&quot;",
+  "'": "&#039;",
+};
+const htmlEscapesRegex = /[&<>"']/g;
+
 function escapeHtml(text) {
   if (!text) return text;
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
+  return text.replace(htmlEscapesRegex, (match) => htmlEscapes[match]);
 }
 
 function formatJSON() {
@@ -13,11 +17,13 @@ function formatJSON() {
   const output = document.getElementById("jsonOutput");
   const indentSelect = document.getElementById("jsonIndent").value;
   const copyBtn = document.getElementById("jsonCopyBtn");
+  const downloadBtn = document.getElementById("jsonOutputDownloadBtn");
 
   if (!input.trim()) {
     output.textContent = "";
     output.style.borderColor = "#ced4da";
     copyBtn.disabled = true;
+    if (downloadBtn) downloadBtn.disabled = true;
     return;
   }
 
@@ -39,11 +45,13 @@ function formatJSON() {
       .join("");
     output.style.borderColor = "#ced4da";
     copyBtn.disabled = false;
+    if (downloadBtn) downloadBtn.disabled = false;
     output.scrollIntoView({ behavior: "smooth", block: "start" });
   } catch (e) {
     output.textContent = "Invalid JSON: " + e.message;
     output.style.borderColor = "red";
     copyBtn.disabled = true;
+    if (downloadBtn) downloadBtn.disabled = true;
     output.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 }
@@ -225,6 +233,8 @@ function renderDiff() {
   let leftLineNum = 1;
   let rightLineNum = 1;
 
+  const fragment = document.createDocumentFragment();
+
   if (currentDiffView === "inline") {
     output.style.padding = "10px";
     output.style.fontFamily =
@@ -267,7 +277,7 @@ function renderDiff() {
 
         div.appendChild(numSpan);
         div.appendChild(contentSpan);
-        output.appendChild(div);
+        fragment.appendChild(div);
       });
     });
   } else {
@@ -319,11 +329,12 @@ function renderDiff() {
 
         row.appendChild(leftCol);
         row.appendChild(rightCol);
-        output.appendChild(row);
+        fragment.appendChild(row);
       });
     });
   }
 
+  output.appendChild(fragment);
   const changes = document.querySelectorAll(".diff-change");
   if (document.getElementById("diffCount")) {
     document.getElementById("diffCount").textContent = "0/" + changes.length;
@@ -380,6 +391,54 @@ function handleFileUpload(fileInput, targetTextareaId, copyBtnId) {
     checkInput(targetTextareaId, copyBtnId);
     document.getElementById(targetTextareaId).dispatchEvent(new Event("input"));
     // Reset file input so the same file can be selected again
+    fileInput.value = "";
+  };
+  reader.onerror = function (e) {
+    alert("Error reading file: " + e.target.error);
+  };
+  reader.readAsText(file);
+}
+
+function handleYamlJsonUpload(fileInput) {
+  const file = fileInput.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function (e) {
+    const content = e.target.result;
+    document.getElementById("yamlJsonInput").value = content;
+    checkInput("yamlJsonInput", "yamlJsonInputCopyBtn");
+    document.getElementById("yamlJsonInput").dispatchEvent(new Event("input"));
+    let filename = file.name;
+    const lastDotIndex = filename.lastIndexOf(".");
+    if (lastDotIndex !== -1) {
+      filename = filename.substring(0, lastDotIndex);
+    }
+    document.getElementById("yamlJsonFileName").value = filename;
+    fileInput.value = "";
+  };
+  reader.onerror = function (e) {
+    alert("Error reading file: " + e.target.error);
+  };
+  reader.readAsText(file);
+}
+
+function handleJsonUpload(fileInput) {
+  const file = fileInput.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function (e) {
+    const content = e.target.result;
+    document.getElementById("jsonInput").value = content;
+    checkInput("jsonInput", "jsonInputCopyBtn");
+    document.getElementById("jsonInput").dispatchEvent(new Event("input"));
+    let filename = file.name;
+    const lastDotIndex = filename.lastIndexOf(".");
+    if (lastDotIndex !== -1) {
+      filename = filename.substring(0, lastDotIndex);
+    }
+    document.getElementById("jsonFileName").value = filename;
     fileInput.value = "";
   };
   reader.onerror = function (e) {
@@ -650,18 +709,69 @@ function downloadYamlJsonOutput() {
 
   if (!text) return;
 
-  let filename = "output.yaml";
+  let extension = ".yaml";
   let type = "text/yaml";
 
   try {
     JSON.parse(text);
-    filename = "output.json";
+    extension = ".json";
     type = "application/json";
   } catch (e) {
     // Not JSON, keep default as YAML
   }
 
+  let filename = document.getElementById("yamlJsonFileName").value.trim();
+  const useTimestamp = document.getElementById("yamlJsonTimestamp").checked;
+
+  if (useTimestamp) {
+    const now = new Date();
+    const timestamp = now.getFullYear() + String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0') + '_' + String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0') + String(now.getSeconds()).padStart(2, '0');
+    filename = filename ? `${filename}_${timestamp}` : `output_${timestamp}`;
+  } else {
+    filename = filename ? filename : "output";
+  }
+  filename += extension;
+
   const blob = new Blob([text], { type: type });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function downloadJsonOutput() {
+  const element = document.getElementById("jsonOutput");
+  if (!element) return;
+
+  let text;
+  const lines = element.querySelectorAll(".line-content");
+  if (lines.length > 0) {
+    text = Array.from(lines)
+      .map((el) => el.textContent)
+      .join("\n");
+  } else {
+    text = element.textContent;
+  }
+
+  if (!text) return;
+
+  let filename = document.getElementById("jsonFileName").value.trim();
+  const useTimestamp = document.getElementById("jsonTimestamp").checked;
+
+  if (useTimestamp) {
+    const now = new Date();
+    const timestamp = now.getFullYear() + String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0') + '_' + String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0') + String(now.getSeconds()).padStart(2, '0');
+    filename = filename ? `${filename}_${timestamp}` : `output_${timestamp}`;
+  } else {
+    filename = filename ? filename : "output";
+  }
+  filename += ".json";
+
+  const blob = new Blob([text], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -679,11 +789,21 @@ function setupLineNumbers(textareaId) {
 
   const update = () => {
     const lines = textarea.value.split("\n").length;
-    if (lineNums.childElementCount !== lines) {
-      lineNums.innerHTML = Array.from(
-        { length: lines },
-        (_, i) => `<div>${i + 1}</div>`,
-      ).join("");
+    const currentCount = lineNums.childElementCount;
+    if (currentCount !== lines) {
+      if (lines > currentCount) {
+        const fragment = document.createDocumentFragment();
+        for (let i = currentCount + 1; i <= lines; i++) {
+          const div = document.createElement("div");
+          div.textContent = i;
+          fragment.appendChild(div);
+        }
+        lineNums.appendChild(fragment);
+      } else {
+        while (lineNums.childElementCount > lines) {
+          lineNums.removeChild(lineNums.lastChild);
+        }
+      }
     }
   };
 
