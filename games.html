@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+
+    <title>Games - Suresh Reddy</title>
+    <meta name="description" content="Peer-to-peer Games" />
+
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://sureshreddy.xyz/games.html" />
+    <!-- Robots -->
+    <meta name="robots" content="index, follow" />
+
+    <!-- Favicons -->
+    <link href="assets/img/favicon.png" rel="icon" />
+    <link href="assets/img/apple-touch-icon.png" rel="apple-touch-icon" />
+
+    <!-- Google Fonts -->
+    <link
+        href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,600,600i,700,700i|Raleway:300,300i,400,400i,500,500i,600,600i,700,700i|Poppins:300,300i,400,400i,500,500i,600,600i,700,700i"
+        rel="stylesheet" />
+
+    <!-- Vendor CSS Files -->
+    <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="assets/vendor/icofont/icofont.min.css" rel="stylesheet" />
+    <link href="assets/vendor/boxicons/css/boxicons.min.css" rel="stylesheet" />
+    <link href="assets/vendor/venobox/venobox.css" rel="stylesheet" />
+    <link href="assets/vendor/owl.carousel/assets/owl.carousel.min.css" rel="stylesheet" />
+    <link href="assets/vendor/aos/aos.css" rel="stylesheet" />
+
+    <!-- Template Main CSS File -->
+    <link href="assets/css/style.css" rel="stylesheet" />
+    <style>
+        .game-board {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            max-width: 300px;
+            margin: 0 auto;
+        }
+
+        .cell {
+            width: 100%;
+            height: 100px;
+            background-color: #fff;
+            border: 2px solid #dee2e6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .cell:hover {
+            background-color: #f8f9fa;
+        }
+
+        .cell.taken {
+            cursor: not-allowed;
+        }
+
+        .cell.x {
+            color: #007bff;
+        }
+
+        .cell.o {
+            color: #28a745;
+        }
+
+        #status {
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        #game-controls {
+            max-width: 500px;
+            margin: 0 auto 30px;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- ======= Mobile nav toggle button ======= -->
+    <button type="button" class="mobile-nav-toggle d-xl-none">
+        <i class="icofont-navigation-menu" aria-hidden="true"></i>
+    </button>
+
+    <!-- ======= Header ======= -->
+    <header id="header" class="d-flex flex-column justify-content-center">
+        <nav class="nav-menu" aria-label="Main navigation">
+            <ul>
+                <li>
+                    <a href="index.html"><i class="bx bx-home"></i> <span>Home</span></a>
+                </li>
+                <li>
+                    <a href="index.html#about"><i class="bx bx-user"></i> <span>About</span></a>
+                </li>
+                <li>
+                    <a href="index.html#skills"><i class="bx bx-book-content"></i> <span>Skills</span></a>
+                </li>
+                <li>
+                    <a href="index.html#resume"><i class="bx bx-file-blank"></i> <span>Resume</span></a>
+                </li>
+                <li>
+                    <a href="tools.html"><i class="bx bx-wrench"></i> <span>Tools</span></a>
+                </li>
+                <li class="active">
+                    <a href="games.html"><i class="bx bx-joystick"></i> <span>Games</span></a>
+                </li>
+            </ul>
+        </nav>
+        <!-- .nav-menu -->
+    </header>
+    <!-- End Header -->
+
+    <main id="main">
+        <!-- ======= Games Section ======= -->
+        <section id="games" class="games section-bg">
+            <div class="container" data-aos="fade-up">
+                <div class="section-title">
+                    <h2>Games</h2>
+                    <p>Peer-to-Peer Tic-Tac-Toe</p>
+                </div>
+
+                <div id="game-controls" class="text-center">
+                    <div id="initial-screen">
+                        <div class="form-group">
+                            <label for="series-length">Series Length:</label>
+                            <select id="series-length" class="form-control" style="max-width: 200px; margin: 0 auto;">
+                                <option value="1">Best of 1</option>
+                                <option value="3" selected>Best of 3</option>
+                                <option value="5">Best of 5</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-primary mr-2" onclick="createGame()">Create Game</button>
+                        <div class="mt-3">
+                            <p>Or join a game:</p>
+                            <div class="input-group mb-3 justify-content-center">
+                                <input type="text" id="join-game-id" class="form-control" placeholder="Enter Game ID"
+                                    style="max-width: 200px;">
+                                <div class="input-group-append">
+                                    <button class="btn btn-outline-secondary" type="button"
+                                        onclick="joinGame()">Join</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="waiting-screen" style="display: none;">
+                        <p>Waiting for opponent...</p>
+                        <p>Share this Game ID: <strong id="display-game-id"></strong></p>
+                        <p><small>Or share this URL: <span id="share-url"></span></small></p>
+                        <button class="btn btn-sm btn-secondary" onclick="copyToClipboard('display-game-id')">Copy
+                            ID</button>
+                        <button class="btn btn-sm btn-secondary" onclick="copyToClipboard('share-url')">Copy
+                            Link</button>
+                    </div>
+                    <div id="connecting-screen" style="display: none;">
+                        <p>Connecting to host...</p>
+                    </div>
+                    <div id="connected-screen" style="display: none;">
+                        <div id="scoreboard" class="mb-3 font-weight-bold">
+                            <span class="text-primary">You: <span id="my-score">0</span></span> |
+                            <span class="text-secondary">Opponent: <span id="op-score">0</span></span>
+                            <div class="small text-muted mt-1">Target: <span id="target-score">1</span> wins</div>
+                        </div>
+                        <div id="status"></div>
+                        <div class="game-board" id="board">
+                            <div class="cell" data-index="0"></div>
+                            <div class="cell" data-index="1"></div>
+                            <div class="cell" data-index="2"></div>
+                            <div class="cell" data-index="3"></div>
+                            <div class="cell" data-index="4"></div>
+                            <div class="cell" data-index="5"></div>
+                            <div class="cell" data-index="6"></div>
+                            <div class="cell" data-index="7"></div>
+                            <div class="cell" data-index="8"></div>
+                        </div>
+                        <button id="restart-btn" class="btn btn-danger mt-4" onclick="handleRestart()">Restart
+                            Game</button>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+        <!-- End Games Section -->
+    </main>
+    <!-- End #main -->
+
+    <!-- ======= Footer ======= -->
+    <footer id="footer">
+        <div class="container">
+            <p>I have learned that i still have to learn a lot</p>
+            <div class="social-links">
+                <a href="https://github.com/Mr-SKR" class="github" target="_blank"><i class="bx bxl-github"></i></a>
+                <a href="https://www.linkedin.com/in/suresh-kumar-reddy/" class="linkedin" target="_blank"><i
+                        class="bx bxl-linkedin"></i></a>
+                <a href="https://www.instagram.com/suresh.kumar.reddy/" class="instagram" target="_blank"><i
+                        class="bx bxl-instagram"></i></a>
+            </div>
+            <div class="credits"></div>
+        </div>
+    </footer>
+    <!-- End Footer -->
+
+    <a href="#" class="back-to-top"><i class="bx bx-up-arrow-alt"></i></a>
+    <div id="preloader"></div>
+
+    <!-- Vendor JS Files -->
+    <script src="assets/vendor/jquery/jquery.min.js"></script>
+    <script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/vendor/jquery.easing/jquery.easing.min.js"></script>
+    <script src="assets/vendor/php-email-form/validate.js"></script>
+    <script src="assets/vendor/waypoints/jquery.waypoints.min.js"></script>
+    <script src="assets/vendor/counterup/counterup.min.js"></script>
+    <script src="assets/vendor/isotope-layout/isotope.pkgd.min.js"></script>
+    <script src="assets/vendor/venobox/venobox.min.js"></script>
+    <script src="assets/vendor/owl.carousel/owl.carousel.min.js"></script>
+    <script src="assets/vendor/typed.js/typed.min.js"></script>
+    <script src="assets/vendor/aos/aos.js"></script>
+
+    <!-- PeerJS -->
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+
+    <!-- Template Main JS File -->
+    <script src="assets/js/main.js"></script>
+    <script src="assets/js/games.js"></script>
+</body>
+
+</html>
