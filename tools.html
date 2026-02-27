@@ -157,6 +157,34 @@
         .diff-change {
             scroll-margin-top: 100px;
         }
+
+        @media (max-width: 991px) {
+            .nav-tabs {
+                flex-wrap: nowrap;
+                overflow-x: auto;
+                overflow-y: hidden;
+                -webkit-overflow-scrolling: touch;
+                border-bottom: 1px solid #dee2e6;
+                padding-bottom: 0;
+            }
+            .nav-tabs .nav-item {
+                white-space: nowrap;
+            }
+            .nav-tabs .nav-link {
+                padding: 0.5rem 0.8rem;
+                font-size: 0.95rem;
+            }
+            .nav-tabs::-webkit-scrollbar {
+                display: none;
+            }
+            .nav-tabs {
+                -ms-overflow-style: none;
+                scrollbar-width: none;
+            }
+            .sticky-controls {
+                padding: 5px 0;
+            }
+        }
     </style>
 </head>
 
