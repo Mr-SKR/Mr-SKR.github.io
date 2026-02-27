@@ -7,10 +7,20 @@ const htmlEscapes = {
 };
 const htmlEscapesRegex = /[&<>"']/g;
 
+function debounce(func, wait) {
+  let timeout;
+  return function (...args) {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func.apply(this, args), wait);
+  };
+}
+
 function escapeHtml(text) {
   if (!text) return text;
   return text.replace(htmlEscapesRegex, (match) => htmlEscapes[match]);
 }
+
+let formatJsonTask = null;
 
 function formatJSON() {
   const input = document.getElementById("jsonInput").value;
@@ -18,6 +28,11 @@ function formatJSON() {
   const indentSelect = document.getElementById("jsonIndent").value;
   const copyBtn = document.getElementById("jsonCopyBtn");
   const downloadBtn = document.getElementById("jsonOutputDownloadBtn");
+
+  if (formatJsonTask) {
+    cancelAnimationFrame(formatJsonTask);
+    formatJsonTask = null;
+  }
 
   if (!input.trim()) {
     output.textContent = "";
@@ -36,23 +51,37 @@ function formatJSON() {
   try {
     const parsed = JSON.parse(input);
     const formatted = JSON.stringify(parsed, null, indent);
-    output.innerHTML = formatted
-      .split("\n")
-      .map(
-        (line, index) =>
-          `<div class="code-line"><span class="line-number">${index + 1}</span><span class="line-content">${escapeHtml(line)}</span></div>`,
-      )
-      .join("");
-    output.style.borderColor = "#ced4da";
-    copyBtn.disabled = false;
-    if (downloadBtn) downloadBtn.disabled = false;
-    output.scrollIntoView({ behavior: "smooth", block: "start" });
+    
+    output.innerHTML = "";
+    const lines = formatted.split("\n");
+    let lineIndex = 0;
+
+    function renderChunk() {
+      const startTime = performance.now();
+      let chunk = "";
+      
+      while (lineIndex < lines.length) {
+        chunk += `<div class="code-line"><span class="line-number">${lineIndex + 1}</span><span class="line-content">${escapeHtml(lines[lineIndex])}</span></div>`;
+        lineIndex++;
+
+        if (lineIndex % 100 === 0 && performance.now() - startTime > 20) {
+          output.insertAdjacentHTML('beforeend', chunk);
+          formatJsonTask = requestAnimationFrame(renderChunk);
+          return;
+        }
+      }
+      output.insertAdjacentHTML('beforeend', chunk);
+      output.style.borderColor = "#ced4da";
+      copyBtn.disabled = false;
+      if (downloadBtn) downloadBtn.disabled = false;
+      formatJsonTask = null;
+    }
+    renderChunk();
   } catch (e) {
     output.textContent = "Invalid JSON: " + e.message;
     output.style.borderColor = "red";
     copyBtn.disabled = true;
     if (downloadBtn) downloadBtn.disabled = true;
-    output.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 }
 
@@ -174,12 +203,31 @@ function decodeJWT() {
 let currentDiffData = null;
 let currentDiffView = "inline";
 let currentDiffIndex = -1;
+let renderDiffTask = null;
+
+function scrollToControls() {
+  const controls = document.querySelector("#diff .sticky-controls");
+  if (controls) {
+    const rect = controls.getBoundingClientRect();
+    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+    const top = rect.top + scrollTop - 10;
+    window.scrollTo({
+      top: top,
+      behavior: "smooth",
+    });
+  }
+}
 
 function compareJSON() {
   const input1 = document.getElementById("jsonDiff1").value;
   const input2 = document.getElementById("jsonDiff2").value;
   const output = document.getElementById("diffOutput");
   const controls = document.getElementById("diffControls");
+
+  if (renderDiffTask) {
+    cancelAnimationFrame(renderDiffTask);
+    renderDiffTask = null;
+  }
 
   if (!input1.trim() && !input2.trim()) {
     output.innerHTML = "";
@@ -189,157 +237,424 @@ function compareJSON() {
     return;
   }
 
+  output.innerHTML =
+    '<div class="d-flex justify-content-center align-items-center p-3"><div class="spinner-border text-primary mr-2" role="status"></div><span class="text-muted">Computing diff...</span></div>';
+
+  let obj1, obj2;
   try {
-    let obj1, obj2;
-    try {
-      obj1 = input1.trim() ? JSON.parse(input1) : {};
-    } catch (e) {
-      throw new Error("Invalid JSON in Original JSON: " + e.message);
-    }
-
-    try {
-      obj2 = input2.trim() ? JSON.parse(input2) : {};
-    } catch (e) {
-      throw new Error("Invalid JSON in Modified JSON: " + e.message);
-    }
-
-    currentDiffData = Diff.diffJson(obj1, obj2);
-    currentDiffIndex = -1;
-    controls.style.display = "block";
-    renderDiff();
-    output.style.borderColor = "#ced4da";
-    output.scrollIntoView({ behavior: "smooth", block: "start" });
+    obj1 = input1.trim() ? JSON.parse(input1) : {};
   } catch (e) {
     output.innerHTML = "";
-    output.textContent = e.message;
+    output.textContent = "Invalid JSON in Original JSON: " + e.message;
     output.style.borderColor = "red";
     controls.style.display = "none";
     currentDiffData = null;
     output.scrollIntoView({ behavior: "smooth", block: "start" });
+    return;
   }
+
+  try {
+    obj2 = input2.trim() ? JSON.parse(input2) : {};
+  } catch (e) {
+    output.innerHTML = "";
+    output.textContent = "Invalid JSON in Modified JSON: " + e.message;
+    output.style.borderColor = "red";
+    controls.style.display = "none";
+    currentDiffData = null;
+    output.scrollIntoView({ behavior: "smooth", block: "start" });
+    return;
+  }
+
+  const workerCode = `
+    self.onmessage = function(e) {
+      const { obj1, obj2 } = e.data;
+
+      function fastDiff(text1, text2) {
+        const lines1 = text1.split('\\n');
+        const lines2 = text2.split('\\n');
+        const diffs = [];
+        let i = 0;
+        let j = 0;
+
+        while (i < lines1.length || j < lines2.length) {
+          if (i < lines1.length && j < lines2.length && lines1[i] === lines2[j]) {
+            let text = lines1[i] + '\\n';
+            let count = 1;
+            i++; j++;
+            while (i < lines1.length && j < lines2.length && lines1[i] === lines2[j]) {
+              text += lines1[i] + '\\n';
+              count++;
+              i++; j++;
+            }
+            diffs.push({ value: text, count: count });
+          } else {
+            let foundIn2 = -1;
+            let foundIn1 = -1;
+
+            if (i < lines1.length) {
+              const maxLookahead = Math.min(j + 1000, lines2.length);
+              for (let k = j; k < maxLookahead; k++) {
+                if (lines2[k] === lines1[i]) {
+                  foundIn2 = k;
+                  break;
+                }
+              }
+            }
+
+            if (j < lines2.length) {
+              const maxLookahead = Math.min(i + 1000, lines1.length);
+              for (let k = i; k < maxLookahead; k++) {
+                if (lines1[k] === lines2[j]) {
+                  foundIn1 = k;
+                  break;
+                }
+              }
+            }
+            
+            if (foundIn2 !== -1 && (foundIn1 === -1 || foundIn2 - j < foundIn1 - i)) {
+              const addedLines = lines2.slice(j, foundIn2);
+              diffs.push({ value: addedLines.join('\\n') + '\\n', count: addedLines.length, added: true });
+              j = foundIn2;
+            } else if (foundIn1 !== -1) {
+              const removedLines = lines1.slice(i, foundIn1);
+              diffs.push({ value: removedLines.join('\\n') + '\\n', count: removedLines.length, removed: true });
+              i = foundIn1;
+            } else {
+              if (i < lines1.length && j < lines2.length) {
+                diffs.push({ value: lines1[i] + '\\n', count: 1, removed: true });
+                diffs.push({ value: lines2[j] + '\\n', count: 1, added: true });
+                i++; j++;
+              } else if (i < lines1.length) {
+                diffs.push({ value: lines1[i] + '\\n', count: 1, removed: true });
+                i++;
+              } else {
+                const addedLines = lines2.slice(j);
+                diffs.push({ value: addedLines.join('\\n') + '\\n', count: addedLines.length, added: true });
+                j = lines2.length;
+              }
+            }
+          }
+        }
+        return diffs;
+      }
+
+      try {
+        const str1 = JSON.stringify(obj1, null, 2);
+        const str2 = JSON.stringify(obj2, null, 2);
+        const diff = fastDiff(str1, str2);
+        self.postMessage({ success: true, diff: diff });
+      } catch (err) {
+        self.postMessage({ success: false, error: err.message });
+      }
+    };
+  `;
+
+  const blob = new Blob([workerCode], { type: "application/javascript" });
+  const workerUrl = URL.createObjectURL(blob);
+  const worker = new Worker(workerUrl);
+
+  worker.onmessage = function (e) {
+    if (e.data.success) {
+      currentDiffData = e.data.diff;
+      currentDiffIndex = -1;
+      controls.style.display = "block";
+      renderDiff();
+      scrollToControls();
+    } else {
+      output.innerHTML = "";
+      output.textContent = e.data.error;
+      output.style.borderColor = "red";
+      controls.style.display = "none";
+      currentDiffData = null;
+      output.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+    worker.terminate();
+    URL.revokeObjectURL(workerUrl);
+  };
+
+  worker.onerror = function (e) {
+    output.innerHTML = "";
+    output.textContent = "Worker Error: " + e.message;
+    output.style.borderColor = "red";
+    controls.style.display = "none";
+    currentDiffData = null;
+    output.scrollIntoView({ behavior: "smooth", block: "start" });
+    worker.terminate();
+    URL.revokeObjectURL(workerUrl);
+  };
+
+  worker.postMessage({ obj1, obj2 });
 }
 
 function setDiffView(view) {
   currentDiffView = view;
-  renderDiff();
+  const output = document.getElementById("diffOutput");
+  // Preserve height to prevent scroll jumping
+  if (output.offsetHeight > 100) {
+    output.style.minHeight = output.offsetHeight + "px";
+  }
+  output.innerHTML =
+    '<div class="d-flex justify-content-center align-items-center p-3"><div class="spinner-border text-primary mr-2" role="status"></div><span class="text-muted">Rendering...</span></div>';
+  setTimeout(renderDiff, 10);
+  setTimeout(scrollToControls, 50);
 }
 
 function renderDiff() {
-  const output = document.getElementById("diffOutput");
+  let output = document.getElementById("diffOutput");
   if (!currentDiffData) return;
 
-  output.innerHTML = "";
+  if (renderDiffTask) {
+    cancelAnimationFrame(renderDiffTask);
+    renderDiffTask = null;
+  }
+
+  const newOutput = output.cloneNode(false);
+  output.parentNode.replaceChild(newOutput, output);
+  output = newOutput;
+
   currentDiffIndex = -1;
   let leftLineNum = 1;
   let rightLineNum = 1;
+  let wasLastLineChange = false;
 
-  const fragment = document.createDocumentFragment();
+  let partIndex = 0;
+  let lineIndex = 0;
+  let currentLines = null;
+  let currentRightLines = null;
+  let isAligned = false;
 
   if (currentDiffView === "inline") {
     output.style.padding = "10px";
     output.style.fontFamily =
       'SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace';
-
-    currentDiffData.forEach(function (part) {
-      const color = part.added ? "#28a745" : part.removed ? "#dc3545" : "grey";
-      const backgroundColor = part.added
-        ? "#e6ffec"
-        : part.removed
-          ? "#ffebe9"
-          : "transparent";
-
-      const lines = part.value.split("\n");
-      if (lines[lines.length - 1] === "") lines.pop();
-
-      lines.forEach((line) => {
-        const div = document.createElement("div");
-        div.className = "diff-line-wrapper";
-        div.style.color = color;
-        div.style.backgroundColor = backgroundColor;
-
-        if (part.added || part.removed) {
-          div.classList.add("diff-change");
-        }
-
-        const numSpan = document.createElement("span");
-        numSpan.className = "diff-line-num";
-        // For inline, usually we might show both or just one. Let's show relevant line number.
-        if (part.removed) numSpan.textContent = leftLineNum++;
-        else if (part.added) numSpan.textContent = rightLineNum++;
-        else {
-          leftLineNum++;
-          numSpan.textContent = rightLineNum++;
-        }
-
-        const contentSpan = document.createElement("span");
-        contentSpan.className = "diff-line-content";
-        contentSpan.textContent = line;
-
-        div.appendChild(numSpan);
-        div.appendChild(contentSpan);
-        fragment.appendChild(div);
-      });
-    });
   } else {
     output.style.padding = "0";
+  }
 
-    currentDiffData.forEach(function (part) {
-      const lines = part.value.split("\n");
-      if (lines[lines.length - 1] === "") lines.pop();
+  function renderChunk() {
+    const startTime = performance.now();
+    const fragment = document.createDocumentFragment();
 
-      lines.forEach((line) => {
-        const row = document.createElement("div");
-        row.className = "diff-row";
+    while (partIndex < currentDiffData.length) {
+      const part = currentDiffData[partIndex];
 
-        if (part.added || part.removed) {
-          row.classList.add("diff-change");
+      if (!currentLines) {
+        currentLines = part.value.split("\n");
+        if (currentLines[currentLines.length - 1] === "") currentLines.pop();
+        wasLastLineChange = false;
+
+        isAligned = false;
+        currentRightLines = null;
+        if (part.removed && partIndex + 1 < currentDiffData.length) {
+          const nextPart = currentDiffData[partIndex + 1];
+          if (nextPart.added) {
+            isAligned = true;
+            currentRightLines = nextPart.value.split("\n");
+            if (currentRightLines[currentRightLines.length - 1] === "")
+              currentRightLines.pop();
+          }
         }
+      }
 
-        const leftCol = document.createElement("div");
-        leftCol.className = "diff-col";
-        const rightCol = document.createElement("div");
-        rightCol.className = "diff-col";
+      const maxLines = isAligned
+        ? Math.max(currentLines.length, currentRightLines.length)
+        : currentLines.length;
 
-        const createLine = (num, text) => {
-          const wrapper = document.createElement("div");
-          wrapper.className = "diff-line-wrapper";
-          const numSpan = document.createElement("span");
-          numSpan.className = "diff-line-num";
-          numSpan.textContent = num;
-          const contentSpan = document.createElement("span");
-          contentSpan.className = "diff-line-content";
-          contentSpan.textContent = text;
-          wrapper.appendChild(numSpan);
-          wrapper.appendChild(contentSpan);
-          return wrapper;
-        };
+      while (lineIndex < maxLines) {
+        const line = currentLines[lineIndex];
+        let isChange = false;
 
-        if (part.removed) {
-          leftCol.classList.add("diff-removed");
-          leftCol.appendChild(createLine(leftLineNum++, line));
-          rightCol.classList.add("diff-spacer");
-        } else if (part.added) {
-          leftCol.classList.add("diff-spacer");
-          rightCol.classList.add("diff-added");
-          rightCol.appendChild(createLine(rightLineNum++, line));
+        if (currentDiffView === "inline") {
+          if (isAligned) {
+            const wrapper = document.createElement("div");
+            wrapper.className = "diff-change";
+
+            const leftText =
+              lineIndex < currentLines.length ? currentLines[lineIndex] : null;
+            const rightText =
+              lineIndex < currentRightLines.length
+                ? currentRightLines[lineIndex]
+                : null;
+
+            const createInlineLine = (text, type, num) => {
+              const div = document.createElement("div");
+              div.className = "diff-line-wrapper";
+              div.style.color = type === "removed" ? "#dc3545" : "#28a745";
+              div.style.backgroundColor =
+                type === "removed" ? "#ffebe9" : "#e6ffec";
+              const numSpan = document.createElement("span");
+              numSpan.className = "diff-line-num";
+              numSpan.textContent = num;
+              const contentSpan = document.createElement("span");
+              contentSpan.className = "diff-line-content";
+              contentSpan.textContent = text;
+              div.appendChild(numSpan);
+              div.appendChild(contentSpan);
+              return div;
+            };
+
+            isChange = true;
+            if (leftText !== null)
+              wrapper.appendChild(
+                createInlineLine(leftText, "removed", leftLineNum++),
+              );
+            if (rightText !== null)
+              wrapper.appendChild(
+                createInlineLine(rightText, "added", rightLineNum++),
+              );
+            fragment.appendChild(wrapper);
+          } else {
+            if (part.added || part.removed) isChange = true;
+            const color = part.added
+              ? "#28a745"
+              : part.removed
+                ? "#dc3545"
+                : "grey";
+            const backgroundColor = part.added
+              ? "#e6ffec"
+              : part.removed
+                ? "#ffebe9"
+                : "transparent";
+
+            const div = document.createElement("div");
+            div.className = "diff-line-wrapper";
+            div.style.color = color;
+            div.style.backgroundColor = backgroundColor;
+
+            if (part.added || part.removed) {
+              div.classList.add("diff-change");
+            }
+
+            const numSpan = document.createElement("span");
+            numSpan.className = "diff-line-num";
+            if (part.removed) numSpan.textContent = leftLineNum++;
+            else if (part.added) numSpan.textContent = rightLineNum++;
+            else {
+              leftLineNum++;
+              numSpan.textContent = rightLineNum++;
+            }
+            const contentSpan = document.createElement("span");
+            contentSpan.className = "diff-line-content";
+            contentSpan.textContent = line;
+            div.appendChild(numSpan);
+            div.appendChild(contentSpan);
+            fragment.appendChild(div);
+          }
         } else {
-          leftCol.appendChild(createLine(leftLineNum++, line));
-          rightCol.appendChild(createLine(rightLineNum++, line));
+          const row = document.createElement("div");
+          row.className = "diff-row";
+
+          const leftCol = document.createElement("div");
+          leftCol.className = "diff-col";
+          const rightCol = document.createElement("div");
+          rightCol.className = "diff-col";
+
+          const createLine = (num, text) => {
+            const wrapper = document.createElement("div");
+            wrapper.className = "diff-line-wrapper";
+            const numSpan = document.createElement("span");
+            numSpan.className = "diff-line-num";
+            numSpan.textContent = num;
+            const contentSpan = document.createElement("span");
+            contentSpan.className = "diff-line-content";
+            contentSpan.textContent = text;
+            wrapper.appendChild(numSpan);
+            wrapper.appendChild(contentSpan);
+            return wrapper;
+          };
+
+          if (isAligned) {
+            isChange = true;
+            row.classList.add("diff-change");
+
+            const leftText =
+              lineIndex < currentLines.length ? currentLines[lineIndex] : null;
+            const rightText =
+              lineIndex < currentRightLines.length
+                ? currentRightLines[lineIndex]
+                : null;
+
+            if (leftText !== null) {
+              leftCol.classList.add("diff-removed");
+              leftCol.appendChild(createLine(leftLineNum++, leftText));
+            } else {
+              leftCol.classList.add("diff-spacer");
+            }
+
+            if (rightText !== null) {
+              rightCol.classList.add("diff-added");
+              rightCol.appendChild(createLine(rightLineNum++, rightText));
+            } else {
+              rightCol.classList.add("diff-spacer");
+            }
+          } else {
+            if (part.added || part.removed) {
+              isChange = true;
+              row.classList.add("diff-change");
+            }
+
+            if (part.removed) {
+              leftCol.classList.add("diff-removed");
+              leftCol.appendChild(createLine(leftLineNum++, line));
+              rightCol.classList.add("diff-spacer");
+            } else if (part.added) {
+              leftCol.classList.add("diff-spacer");
+              rightCol.classList.add("diff-added");
+              rightCol.appendChild(createLine(rightLineNum++, line));
+            } else {
+              leftCol.appendChild(createLine(leftLineNum++, line));
+              rightCol.appendChild(createLine(rightLineNum++, line));
+            }
+          }
+
+          row.appendChild(leftCol);
+          row.appendChild(rightCol);
+          fragment.appendChild(row);
         }
 
-        row.appendChild(leftCol);
-        row.appendChild(rightCol);
-        fragment.appendChild(row);
-      });
-    });
+        if (isChange) {
+          if (!wasLastLineChange) {
+            const lastChild = fragment.lastChild;
+            if (lastChild) {
+              lastChild.classList.add("diff-group-start");
+            }
+          }
+          wasLastLineChange = true;
+        } else {
+          wasLastLineChange = false;
+        }
+
+        lineIndex++;
+
+        if (lineIndex % 50 === 0 && performance.now() - startTime > 20) {
+          output.appendChild(fragment);
+          renderDiffTask = requestAnimationFrame(renderChunk);
+          return;
+        }
+      }
+
+      partIndex++;
+      if (isAligned) {
+        partIndex++;
+      }
+      lineIndex = 0;
+      currentLines = null;
+      currentRightLines = null;
+      isAligned = false;
+    }
+
+    output.appendChild(fragment);
+    renderDiffTask = null;
+    output.style.minHeight = "100px";
+
+    const changes = document.querySelectorAll(".diff-group-start");
+    if (document.getElementById("diffCount")) {
+      document.getElementById("diffCount").textContent = "0/" + changes.length;
+    }
+    updateDiffButtons(-1, changes.length);
   }
 
-  output.appendChild(fragment);
-  const changes = document.querySelectorAll(".diff-change");
-  if (document.getElementById("diffCount")) {
-    document.getElementById("diffCount").textContent = "0/" + changes.length;
-  }
-  updateDiffButtons(-1, changes.length);
+  renderChunk();
 }
 
 function copyToClipboard(elementId, btn) {
@@ -380,75 +695,48 @@ function checkInput(inputId, btnId) {
   }
 }
 
-function handleFileUpload(fileInput, targetTextareaId, copyBtnId) {
+function handleFileSelect(fileInput, targetTextareaId, copyBtnId, filenameInputId) {
   const file = fileInput.files[0];
   if (!file) return;
 
   const reader = new FileReader();
   reader.onload = function (e) {
     const content = e.target.result;
-    document.getElementById(targetTextareaId).value = content;
+    const textarea = document.getElementById(targetTextareaId);
+    textarea.value = content;
     checkInput(targetTextareaId, copyBtnId);
-    document.getElementById(targetTextareaId).dispatchEvent(new Event("input"));
-    // Reset file input so the same file can be selected again
+    textarea.dispatchEvent(new Event("input"));
+    
+    if (filenameInputId) {
+      let filename = file.name;
+      const lastDotIndex = filename.lastIndexOf(".");
+      if (lastDotIndex !== -1) {
+        filename = filename.substring(0, lastDotIndex);
+      }
+      document.getElementById(filenameInputId).value = filename;
+    }
     fileInput.value = "";
   };
   reader.onerror = function (e) {
     alert("Error reading file: " + e.target.error);
   };
   reader.readAsText(file);
+}
+
+function handleFileUpload(fileInput, targetTextareaId, copyBtnId) {
+  handleFileSelect(fileInput, targetTextareaId, copyBtnId, null);
 }
 
 function handleYamlJsonUpload(fileInput) {
-  const file = fileInput.files[0];
-  if (!file) return;
-
-  const reader = new FileReader();
-  reader.onload = function (e) {
-    const content = e.target.result;
-    document.getElementById("yamlJsonInput").value = content;
-    checkInput("yamlJsonInput", "yamlJsonInputCopyBtn");
-    document.getElementById("yamlJsonInput").dispatchEvent(new Event("input"));
-    let filename = file.name;
-    const lastDotIndex = filename.lastIndexOf(".");
-    if (lastDotIndex !== -1) {
-      filename = filename.substring(0, lastDotIndex);
-    }
-    document.getElementById("yamlJsonFileName").value = filename;
-    fileInput.value = "";
-  };
-  reader.onerror = function (e) {
-    alert("Error reading file: " + e.target.error);
-  };
-  reader.readAsText(file);
+  handleFileSelect(fileInput, "yamlJsonInput", "yamlJsonInputCopyBtn", "yamlJsonFileName");
 }
 
 function handleJsonUpload(fileInput) {
-  const file = fileInput.files[0];
-  if (!file) return;
-
-  const reader = new FileReader();
-  reader.onload = function (e) {
-    const content = e.target.result;
-    document.getElementById("jsonInput").value = content;
-    checkInput("jsonInput", "jsonInputCopyBtn");
-    document.getElementById("jsonInput").dispatchEvent(new Event("input"));
-    let filename = file.name;
-    const lastDotIndex = filename.lastIndexOf(".");
-    if (lastDotIndex !== -1) {
-      filename = filename.substring(0, lastDotIndex);
-    }
-    document.getElementById("jsonFileName").value = filename;
-    fileInput.value = "";
-  };
-  reader.onerror = function (e) {
-    alert("Error reading file: " + e.target.error);
-  };
-  reader.readAsText(file);
+  handleFileSelect(fileInput, "jsonInput", "jsonInputCopyBtn", "jsonFileName");
 }
 
 function navigateDiff(direction) {
-  const changes = document.querySelectorAll(".diff-change");
+  const changes = document.querySelectorAll(".diff-group-start");
   if (changes.length === 0) return;
 
   if (currentDiffIndex !== -1 && changes[currentDiffIndex]) {
@@ -460,7 +748,14 @@ function navigateDiff(direction) {
   if (currentDiffIndex >= changes.length) currentDiffIndex = changes.length - 1;
 
   const target = changes[currentDiffIndex];
-  target.scrollIntoView({ behavior: "smooth", block: "nearest" });
+
+  const header = document.querySelector("#diff .sticky-controls");
+  const headerHeight = header ? header.offsetHeight : 0;
+  const targetTop = target.getBoundingClientRect().top + window.pageYOffset;
+  window.scrollTo({
+    top: targetTop - headerHeight - 40,
+    behavior: "smooth",
+  });
   target.classList.add("diff-highlight");
 
   if (document.getElementById("diffCount")) {
@@ -693,20 +988,55 @@ function jsonToYaml() {
   }
 }
 
-function downloadYamlJsonOutput() {
-  const element = document.getElementById("yamlJsonOutput");
-  if (!element) return;
-
-  let text;
+function getTextFromOutput(elementId) {
+  const element = document.getElementById(elementId);
+  if (!element) return null;
+  
   const lines = element.querySelectorAll(".line-content");
   if (lines.length > 0) {
-    text = Array.from(lines)
-      .map((el) => el.textContent)
-      .join("\n");
+    return Array.from(lines).map((el) => el.textContent).join("\n");
+  }
+  return element.textContent;
+}
+
+function triggerDownload(content, filenameInputId, timestampCheckboxId, extension, type) {
+  if (!content) return;
+
+  let filename = document.getElementById(filenameInputId).value.trim();
+  const useTimestamp = document.getElementById(timestampCheckboxId).checked;
+
+  if (useTimestamp) {
+    const now = new Date();
+    const timestamp =
+      now.getFullYear() +
+      String(now.getMonth() + 1).padStart(2, "0") +
+      String(now.getDate()).padStart(2, "0") +
+      "_" +
+      String(now.getHours()).padStart(2, "0") +
+      String(now.getMinutes()).padStart(2, "0") +
+      String(now.getSeconds()).padStart(2, "0");
+    filename = filename ? `${filename}_${timestamp}` : `output_${timestamp}`;
   } else {
-    text = element.textContent;
+    filename = filename ? filename : "output";
+  }
+  
+  if (!filename.toLowerCase().endsWith(extension)) {
+      filename += extension;
   }
 
+  const blob = new Blob([content], { type: type });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function downloadYamlJsonOutput() {
+  const text = getTextFromOutput("yamlJsonOutput");
   if (!text) return;
 
   let extension = ".yaml";
@@ -720,66 +1050,13 @@ function downloadYamlJsonOutput() {
     // Not JSON, keep default as YAML
   }
 
-  let filename = document.getElementById("yamlJsonFileName").value.trim();
-  const useTimestamp = document.getElementById("yamlJsonTimestamp").checked;
-
-  if (useTimestamp) {
-    const now = new Date();
-    const timestamp = now.getFullYear() + String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0') + '_' + String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0') + String(now.getSeconds()).padStart(2, '0');
-    filename = filename ? `${filename}_${timestamp}` : `output_${timestamp}`;
-  } else {
-    filename = filename ? filename : "output";
-  }
-  filename += extension;
-
-  const blob = new Blob([text], { type: type });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  triggerDownload(text, "yamlJsonFileName", "yamlJsonTimestamp", extension, type);
 }
 
 function downloadJsonOutput() {
-  const element = document.getElementById("jsonOutput");
-  if (!element) return;
-
-  let text;
-  const lines = element.querySelectorAll(".line-content");
-  if (lines.length > 0) {
-    text = Array.from(lines)
-      .map((el) => el.textContent)
-      .join("\n");
-  } else {
-    text = element.textContent;
-  }
-
+  const text = getTextFromOutput("jsonOutput");
   if (!text) return;
-
-  let filename = document.getElementById("jsonFileName").value.trim();
-  const useTimestamp = document.getElementById("jsonTimestamp").checked;
-
-  if (useTimestamp) {
-    const now = new Date();
-    const timestamp = now.getFullYear() + String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0') + '_' + String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0') + String(now.getSeconds()).padStart(2, '0');
-    filename = filename ? `${filename}_${timestamp}` : `output_${timestamp}`;
-  } else {
-    filename = filename ? filename : "output";
-  }
-  filename += ".json";
-
-  const blob = new Blob([text], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  triggerDownload(text, "jsonFileName", "jsonTimestamp", ".json", "application/json");
 }
 
 function setupLineNumbers(textareaId) {
@@ -787,7 +1064,7 @@ function setupLineNumbers(textareaId) {
   const lineNums = document.getElementById(textareaId + "LineNums");
   if (!textarea || !lineNums) return;
 
-  const update = () => {
+  const update = debounce(() => {
     const lines = textarea.value.split("\n").length;
     const currentCount = lineNums.childElementCount;
     if (currentCount !== lines) {
@@ -805,7 +1082,7 @@ function setupLineNumbers(textareaId) {
         }
       }
     }
-  };
+  }, 10);
 
   const syncScroll = () => {
     lineNums.scrollTop = textarea.scrollTop;
