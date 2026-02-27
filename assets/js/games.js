@@ -132,6 +132,10 @@ class TicTacToe {
                     return;
                 }
             }
+            if (err.type === 'network') {
+                setTimeout(() => this.initPeer(), 2000);
+                return;
+            }
             alert('Connection error: ' + err.type);
             this.dom.waitingScreen.style.display = 'none';
             this.dom.connectingScreen.style.display = 'none';
