@@ -80,6 +80,11 @@
         #game-controls {
             max-width: 500px;
             margin: 0 auto 30px;
+            position: relative;
+        }
+        .op-away {
+            color: #dc3545 !important;
+            transition: color 0.3s;
         }
     </style>
 </head>
@@ -137,15 +142,14 @@
                                 <option value="5">Best of 5</option>
                             </select>
                         </div>
-                        <button class="btn btn-primary mr-2" onclick="createGame()">Create Game</button>
+                        <button id="create-game-btn" class="btn btn-primary mr-2">Create Game</button>
                         <div class="mt-3">
                             <p>Or join a game:</p>
                             <div class="input-group mb-3 justify-content-center">
                                 <input type="text" id="join-game-id" class="form-control" placeholder="Enter Game ID"
                                     style="max-width: 200px;">
                                 <div class="input-group-append">
-                                    <button class="btn btn-outline-secondary" type="button"
-                                        onclick="joinGame()">Join</button>
+                                    <button id="join-game-btn" class="btn btn-outline-secondary" type="button">Join</button>
                                 </div>
                             </div>
                         </div>
@@ -154,10 +158,8 @@
                         <p>Waiting for opponent...</p>
                         <p>Share this Game ID: <strong id="display-game-id"></strong></p>
                         <p><small>Or share this URL: <span id="share-url"></span></small></p>
-                        <button class="btn btn-sm btn-secondary" onclick="copyToClipboard('display-game-id')">Copy
-                            ID</button>
-                        <button class="btn btn-sm btn-secondary" onclick="copyToClipboard('share-url')">Copy
-                            Link</button>
+                        <button id="copy-id-btn" class="btn btn-sm btn-secondary">Copy ID</button>
+                        <button id="copy-link-btn" class="btn btn-sm btn-secondary">Copy Link</button>
                     </div>
                     <div id="connecting-screen" style="display: none;">
                         <p>Connecting to host...</p>
@@ -165,7 +167,7 @@
                     <div id="connected-screen" style="display: none;">
                         <div id="scoreboard" class="mb-3 font-weight-bold">
                             <span class="text-primary">You: <span id="my-score">0</span></span> |
-                            <span class="text-secondary">Opponent: <span id="op-score">0</span></span>
+                            <span class="text-secondary" id="op-container"><span id="op-label">Opponent</span>: <span id="op-score">0</span></span>
                             <div class="small text-muted mt-1">Target: <span id="target-score">1</span> wins</div>
                         </div>
                         <div id="status"></div>
@@ -180,8 +182,7 @@
                             <div class="cell" data-index="7"></div>
                             <div class="cell" data-index="8"></div>
                         </div>
-                        <button id="restart-btn" class="btn btn-danger mt-4" onclick="handleRestart()">Restart
-                            Game</button>
+                        <button id="restart-btn" class="btn btn-danger mt-4">Restart Game</button>
                     </div>
                 </div>
 
@@ -224,7 +225,7 @@
     <script src="assets/vendor/aos/aos.js"></script>
 
     <!-- PeerJS -->
-    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+    <script src="assets/js/peerjs.min.js"></script>
 
     <!-- Template Main JS File -->
     <script src="assets/js/main.js"></script>
