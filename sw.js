@@ -1,4 +1,4 @@
-const CACHE_NAME = "tools-cache-v1";
+const CACHE_NAME = "tools-cache-v2";
 const ASSETS_TO_CACHE = [
   "tools.html",
   "assets/css/style.css",
@@ -23,11 +23,11 @@ const ASSETS_TO_CACHE = [
   "assets/vendor/owl.carousel/owl.carousel.min.js",
   "assets/vendor/typed.js/typed.min.js",
   "assets/vendor/aos/aos.js",
-  "assets/vendor/jwt-decode/jwt-decode.min.js",
-  "assets/vendor/jsdiff/diff.min.js",
-  "assets/vendor/crypto-js/crypto-js.min.js",
-  "assets/vendor/jsrsasign/jsrsasign-all-min.js",
-  "assets/vendor/js-yaml/js-yaml.min.js",
+  "assets/js/jwt-decode.min.js",
+  "assets/js/diff.min.js",
+  "assets/js/crypto-js.min.js",
+  "assets/js/jsrsasign-all-min.js",
+  "assets/js/js-yaml.min.js",
 ];
 
 self.addEventListener("install", (event) => {
