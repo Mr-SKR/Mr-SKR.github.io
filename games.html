@@ -86,6 +86,9 @@
             color: #dc3545 !important;
             transition: color 0.3s;
         }
+        .mw-200 {
+            max-width: 200px;
+        }
     </style>
 </head>
 
@@ -136,20 +139,19 @@
                     <div id="initial-screen">
                         <div class="form-group">
                             <label for="series-length">Series Length:</label>
-                            <select id="series-length" class="form-control" style="max-width: 200px; margin: 0 auto;">
+                            <select id="series-length" class="form-control mw-200 mx-auto">
                                 <option value="1">Best of 1</option>
                                 <option value="3" selected>Best of 3</option>
                                 <option value="5">Best of 5</option>
                             </select>
                         </div>
-                        <button id="create-game-btn" class="btn btn-primary mr-2">Create Game</button>
+                        <button id="create-game-btn" class="btn btn-primary mr-2" disabled>Create Game</button>
                         <div class="mt-3">
                             <p>Or join a game:</p>
                             <div class="input-group mb-3 justify-content-center">
-                                <input type="text" id="join-game-id" class="form-control" placeholder="Enter Game ID"
-                                    style="max-width: 200px;">
+                                <input type="text" id="join-game-id" class="form-control mw-200" placeholder="Enter Game ID">
                                 <div class="input-group-append">
-                                    <button id="join-game-btn" class="btn btn-outline-secondary" type="button">Join</button>
+                                    <button id="join-game-btn" class="btn btn-outline-secondary" type="button" disabled>Join</button>
                                 </div>
                             </div>
                         </div>
@@ -162,7 +164,10 @@
                         <button id="copy-link-btn" class="btn btn-sm btn-secondary">Copy Link</button>
                     </div>
                     <div id="connecting-screen" style="display: none;">
-                        <p>Connecting to host...</p>
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="sr-only">Loading...</span>
+                        </div>
+                        <p id="connecting-text" class="mt-2">Connecting...</p>
                     </div>
                     <div id="connected-screen" style="display: none;">
                         <div id="scoreboard" class="mb-3 font-weight-bold">
@@ -183,6 +188,7 @@
                             <div class="cell" data-index="8"></div>
                         </div>
                         <button id="restart-btn" class="btn btn-danger mt-4">Restart Game</button>
+                        <button id="end-game-btn" class="btn btn-secondary mt-4 ml-2">End Game</button>
                     </div>
                 </div>
 

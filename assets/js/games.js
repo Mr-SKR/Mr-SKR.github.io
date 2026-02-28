@@ -1,13 +1,11 @@
-const WIN_CONDITIONS = [
-    [0, 1, 2],
-    [3, 4, 5],
-    [6, 7, 8],
-    [0, 3, 6],
-    [1, 4, 7],
-    [2, 5, 8],
-    [0, 4, 8],
-    [2, 4, 6]
-];
+const CONFIG = {
+    WIN_CONDITIONS: [
+        [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
+        [0, 3, 6], [1, 4, 7], [2, 5, 8], // Cols
+        [0, 4, 8], [2, 4, 6]             // Diagonals
+    ],
+    MAX_JOIN_RETRIES: 10
+};
 
 class TicTacToe {
     constructor() {
@@ -26,6 +24,9 @@ class TicTacToe {
         this.connectionRejected = false;
         this.awayInterval = null;
         this.awayTimeout = null;
+        this.joinRetryCount = 0;
+        this.reconnectRetryCount = 0;
+        this.connectionTimeout = null;
 
         this.dom = {};
         this.init();
@@ -34,6 +35,14 @@ class TicTacToe {
     init() {
         this.cacheDOM();
         this.bindEvents();
+        
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('join')) {
+            this.dom.initialScreen.style.display = 'none';
+            this.dom.connectingScreen.style.display = 'block';
+            this.dom.connectingText.innerText = "Connecting to host...";
+        }
+        
         this.initPeer();
     }
 
@@ -42,6 +51,7 @@ class TicTacToe {
         this.dom.waitingScreen = document.getElementById('waiting-screen');
         this.dom.connectingScreen = document.getElementById('connecting-screen');
         this.dom.connectedScreen = document.getElementById('connected-screen');
+        this.dom.connectingText = document.getElementById('connecting-text');
         this.dom.joinGameId = document.getElementById('join-game-id');
         this.dom.displayGameId = document.getElementById('display-game-id');
         this.dom.shareUrl = document.getElementById('share-url');
@@ -51,6 +61,7 @@ class TicTacToe {
         this.dom.targetScore = document.getElementById('target-score');
         this.dom.seriesLength = document.getElementById('series-length');
         this.dom.restartBtn = document.getElementById('restart-btn');
+        this.dom.endGameBtn = document.getElementById('end-game-btn');
         this.dom.opContainer = document.getElementById('op-container');
         this.dom.opLabel = document.getElementById('op-label');
         this.dom.cells = document.querySelectorAll('.cell');
@@ -68,13 +79,14 @@ class TicTacToe {
         this.dom.copyIdBtn.addEventListener('click', (e) => this.copyToClipboard(this.dom.displayGameId, e.target));
         this.dom.copyLinkBtn.addEventListener('click', (e) => this.copyToClipboard(this.dom.shareUrl, e.target));
         this.dom.restartBtn.addEventListener('click', () => this.handleRestart());
+        this.dom.endGameBtn.addEventListener('click', () => this.endGame());
 
         this.dom.cells.forEach((cell, index) => {
             cell.addEventListener('click', () => this.handleCellClick(index));
         });
 
         document.addEventListener("visibilitychange", () => {
-            if (this.conn && this.conn.open) {
+            if (this.conn) {
                 this.conn.send({ 
                     type: 'visibility', 
                     status: document.hidden ? 'hidden' : 'visible' 
@@ -84,55 +96,142 @@ class TicTacToe {
     }
 
     initPeer() {
-        this.peer = new Peer();
+        if (this.peer) {
+            this.peer.removeAllListeners();
+            if (!this.peer.destroyed) {
+                this.peer.destroy();
+            }
+        }
+
+        if (this.myId) {
+            this.peer = new Peer(this.myId);
+        } else {
+            this.peer = new Peer();
+        }
 
         this.peer.on('open', (id) => {
             this.myId = id;
+            this.reconnectRetryCount = 0;
             console.log('My peer ID is: ' + id);
+            
+            this.dom.createGameBtn.disabled = false;
+            this.dom.joinGameBtn.disabled = false;
             
             const urlParams = new URLSearchParams(window.location.search);
             const joinId = urlParams.get('join');
             if (joinId) {
                 this.dom.joinGameId.value = joinId;
                 this.joinGame();
+            } else if (this.isHost) {
+                this.dom.displayGameId.innerText = this.myId;
+                const url = new URL(window.location.href);
+                url.searchParams.set('join', this.myId);
+                this.dom.shareUrl.innerText = url.toString();
+
+                if (this.gameActive || this.myScore > 0 || this.opponentScore > 0) {
+                    this.dom.connectingScreen.style.display = 'none';
+                    this.dom.connectedScreen.style.display = 'block';
+                    this.dom.status.innerText = "Waiting for opponent...";
+                } else {
+                    this.dom.connectingScreen.style.display = 'none';
+                    this.dom.waitingScreen.style.display = 'block';
+                }
             }
         });
 
         this.peer.on('connection', (c) => {
             if (this.conn && this.conn.open) {
-                c.on('open', () => {
-                    c.send({ type: 'game-full' });
-                    setTimeout(() => { c.close(); }, 500);
-                });
-                return;
+                const oldConn = this.conn;
+                this.conn = c;
+                oldConn.close();
+            } else {
+                this.conn = c;
             }
-            this.conn = c;
             this.opponentId = this.conn.peer;
             this.isHost = true;
             this.setupConnection();
             
-            this.mySymbol = 'X';
-            this.currentTurn = 'X';
-            const seriesLength = parseInt(this.dom.seriesLength.value) || 1;
-            this.targetWins = Math.ceil(seriesLength / 2);
-            this.startGame();
-            
-            setTimeout(() => {
-                 this.conn.send({ type: 'start', symbol: 'O', targetWins: this.targetWins });
-            }, 500);
+            if (this.gameActive || this.myScore > 0 || this.opponentScore > 0) {
+                const gameState = {
+                    type: 'sync',
+                    symbol: this.mySymbol === 'X' ? 'O' : 'X',
+                    targetWins: this.targetWins,
+                    board: this.board,
+                    currentTurn: this.currentTurn,
+                    myScore: this.opponentScore,
+                    opponentScore: this.myScore,
+                    gameActive: this.gameActive
+                };
+
+                if (this.conn.open) {
+                    this.conn.send(gameState);
+                } else {
+                    this.conn.on('open', () => {
+                        this.conn.send(gameState);
+                    });
+                }
+                this.handleVisibilityChange('visible');
+            } else {
+                this.mySymbol = 'X';
+                this.currentTurn = 'X';
+                const seriesLength = parseInt(this.dom.seriesLength.value) || 1;
+                this.targetWins = Math.ceil(seriesLength / 2);
+                this.startGame();
+                
+                if (this.conn.open) {
+                    this.conn.send({ type: 'start', symbol: 'O', targetWins: this.targetWins });
+                } else {
+                    this.conn.on('open', () => {
+                        this.conn.send({ type: 'start', symbol: 'O', targetWins: this.targetWins });
+                    });
+                }
+            }
+        });
+        
+        this.peer.on('disconnected', () => {
+            if (!this.peer.destroyed) {
+                console.log('Connection to PeerServer disconnected. Reconnecting...');
+                this.peer.reconnect();
+            }
         });
         
         this.peer.on('error', (err) => {
             console.error(err);
+            if (this.connectionTimeout) clearTimeout(this.connectionTimeout);
+            if (err.type === 'unavailable-id') {
+                this.reconnectRetryCount++;
+                console.log(`ID taken. Retrying... (${this.reconnectRetryCount})`);
+                this.dom.connectingText.innerText = `Reconnecting... (${this.reconnectRetryCount})`;
+                
+                this.peer.removeAllListeners();
+                this.peer.destroy();
+                setTimeout(() => this.initPeer(), 500);
+                return;
+            }
             if (err.type === 'peer-unavailable') {
                 const urlParams = new URLSearchParams(window.location.search);
                 if (urlParams.get('join')) {
-                    alert('The game you are trying to join does not exist.');
+                    if (this.joinRetryCount < CONFIG.MAX_JOIN_RETRIES) {
+                        this.joinRetryCount++;
+                        console.log(`Host unavailable. Retrying... (${this.joinRetryCount})`);
+                        this.dom.connectingText.innerText = `Connecting to host... (${this.joinRetryCount}/${CONFIG.MAX_JOIN_RETRIES})`;
+                        setTimeout(() => this.joinGame(), 2000);
+                        return;
+                    }
+                    alert('The game you are trying to join does not exist or host is offline.');
                     window.location.href = window.location.pathname;
                     return;
                 }
             }
-            if (err.type === 'network') {
+            if (err.type === 'network' || err.type === 'server-error') {
+                this.dom.connectedScreen.style.display = 'none';
+                this.dom.connectingScreen.style.display = 'block';
+                const urlParams = new URLSearchParams(window.location.search);
+                if (urlParams.get('join')) {
+                    this.dom.connectingText.innerText = "Connecting to host...";
+                } else {
+                    this.dom.connectingText.innerText = "Reconnecting...";
+                }
                 setTimeout(() => this.initPeer(), 2000);
                 return;
             }
@@ -145,6 +244,7 @@ class TicTacToe {
     }
 
     createGame() {
+        this.isHost = true;
         this.dom.initialScreen.style.display = 'none';
         this.dom.waitingScreen.style.display = 'block';
         this.dom.displayGameId.innerText = this.myId;
@@ -159,26 +259,45 @@ class TicTacToe {
         if (!joinId) return alert('Please enter a Game ID');
         if (joinId === this.myId) return alert('You cannot play with yourself!');
 
+        if (this.conn) {
+            this.conn.close();
+        }
+
         this.conn = this.peer.connect(joinId);
+        
+        if (this.connectionTimeout) clearTimeout(this.connectionTimeout);
+        this.connectionTimeout = setTimeout(() => {
+            if (this.conn && !this.conn.open) {
+                console.log('Connection timed out.');
+                this.peer.emit('error', { type: 'peer-unavailable' });
+            }
+        }, 5000);
+
         this.setupConnection();
         
         this.dom.initialScreen.style.display = 'none';
+        this.dom.waitingScreen.style.display = 'none';
+        this.dom.connectedScreen.style.display = 'none';
         this.dom.connectingScreen.style.display = 'block';
+        this.dom.connectingText.innerText = `Connecting to host...${this.joinRetryCount > 0 ? ` (${this.joinRetryCount}/${CONFIG.MAX_JOIN_RETRIES})` : ''}`;
     }
 
     setupConnection() {
-        this.conn.on('open', () => {
-            console.log('Connected to: ' + this.conn.peer);
+        const connection = this.conn;
+        connection.on('open', () => {
+            if (this.connectionTimeout) clearTimeout(this.connectionTimeout);
+            console.log('Connected to: ' + connection.peer);
+            this.joinRetryCount = 0;
         });
 
-        this.conn.on('data', (data) => this.handleData(data));
+        connection.on('data', (data) => this.handleData(data));
         
-        this.conn.on('close', () => {
+        connection.on('close', () => {
             if (this.awayInterval) clearInterval(this.awayInterval);
             if (this.awayTimeout) clearTimeout(this.awayTimeout);
-            if (!this.connectionRejected) {
+            if (this.conn === connection && !this.connectionRejected) {
                 alert('Connection lost');
-                location.reload();
+                window.location.href = window.location.pathname;
             }
         });
     }
@@ -192,6 +311,46 @@ class TicTacToe {
                 this.myScore = 0;
                 this.opponentScore = 0;
                 this.startGame();
+                break;
+            case 'sync':
+                this.mySymbol = data.symbol;
+                this.targetWins = data.targetWins;
+                this.board = data.board;
+                this.currentTurn = data.currentTurn;
+                this.myScore = data.myScore;
+                this.opponentScore = data.opponentScore;
+                this.gameActive = data.gameActive;
+                
+                this.dom.waitingScreen.style.display = 'none';
+                this.dom.connectingScreen.style.display = 'none';
+                this.dom.connectedScreen.style.display = 'block';
+                
+                this.updateScoreboard();
+                this.renderBoard();
+                
+                if (this.gameActive) {
+                    this.updateStatus();
+                } else {
+                    let winner = null;
+                    for (const condition of CONFIG.WIN_CONDITIONS) {
+                        const [a, b, c] = condition;
+                        if (this.board[a] && this.board[a] === this.board[b] && this.board[a] === this.board[c]) {
+                            winner = this.board[a];
+                            break;
+                        }
+                    }
+                    
+                    if (winner) {
+                        const isWin = winner === this.mySymbol;
+                        this.dom.status.innerText = isWin ? 'You Win!' : 'You Lose!';
+                        this.dom.status.style.color = isWin ? '#28a745' : '#dc3545';
+                        this.checkSeriesEnd();
+                    } else {
+                        this.dom.status.innerText = 'Draw!';
+                        this.dom.status.style.color = '#ffc107';
+                    }
+                }
+                this.updateButtonState();
                 break;
             case 'move':
                 this.makeMove(data.index, data.symbol);
@@ -216,6 +375,10 @@ class TicTacToe {
                 break;
             case 'visibility':
                 this.handleVisibilityChange(data.status);
+                break;
+            case 'end-game':
+                alert('Opponent ended the game.');
+                window.location.href = window.location.pathname;
                 break;
         }
     }
@@ -251,9 +414,15 @@ class TicTacToe {
         this.dom.cells.forEach((cell, index) => {
             cell.innerText = this.board[index];
             cell.className = 'cell';
-            if (this.board[index] === 'X') cell.classList.add('x', 'taken');
-            if (this.board[index] === 'O') cell.classList.add('o', 'taken');
+            const symbol = this.board[index];
+            if (symbol) cell.classList.add(symbol.toLowerCase(), 'taken');
         });
+    }
+
+    updateCell(index, symbol) {
+        const cell = this.dom.cells[index];
+        cell.innerText = symbol;
+        cell.classList.add(symbol.toLowerCase(), 'taken');
     }
 
     handleCellClick(index) {
@@ -265,7 +434,7 @@ class TicTacToe {
 
     makeMove(index, symbol) {
         this.board[index] = symbol;
-        this.renderBoard();
+        this.updateCell(index, symbol);
         
         if (this.checkWin()) {
             this.gameActive = false;
@@ -288,7 +457,7 @@ class TicTacToe {
     }
 
     checkWin() {
-        return WIN_CONDITIONS.some(condition => {
+        return CONFIG.WIN_CONDITIONS.some(condition => {
             return condition.every(index => {
                 return this.board[index] === this.currentTurn;
             });
@@ -336,6 +505,14 @@ class TicTacToe {
         }
     }
 
+    endGame() {
+        if (this.conn && this.conn.open) {
+            this.conn.send({ type: 'end-game' });
+        }
+        alert('Game ended.');
+        window.location.href = window.location.pathname;
+    }
+
     fullReset() {
         this.myScore = 0;
         this.opponentScore = 0;
@@ -358,7 +535,7 @@ class TicTacToe {
             if (this.awayTimeout) clearTimeout(this.awayTimeout);
             this.awayTimeout = setTimeout(() => {
                 this.dom.opContainer.classList.add('op-away');
-                let timeLeft = 60;
+                let timeLeft = 120;
                 this.dom.opLabel.innerHTML = `Opponent <span style="font-size: 0.75em">(Away ${timeLeft}s)</span>`;
                 
                 if (this.awayInterval) clearInterval(this.awayInterval);
@@ -370,10 +547,10 @@ class TicTacToe {
                         clearInterval(this.awayInterval);
                         if (this.conn) this.conn.close();
                         alert('Opponent timed out.');
-                        location.reload();
+                        window.location.href = window.location.pathname;
                     }
                 }, 1000);
-            }, 10000);
+            }, 60000);
         } else {
             if (this.awayTimeout) clearTimeout(this.awayTimeout);
             if (this.awayInterval) clearInterval(this.awayInterval);
