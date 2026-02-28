@@ -73,6 +73,11 @@ class TicTacToe {
         this.dom.joinGameBtn = document.getElementById('join-game-btn');
         this.dom.copyIdBtn = document.getElementById('copy-id-btn');
         this.dom.copyLinkBtn = document.getElementById('copy-link-btn');
+        
+        // Social Share Buttons
+        this.dom.shareWhatsappBtn = document.getElementById('share-whatsapp-btn');
+        this.dom.shareTelegramBtn = document.getElementById('share-telegram-btn');
+        this.dom.shareTwitterBtn = document.getElementById('share-twitter-btn');
     }
 
     bindEvents() {
@@ -80,6 +85,11 @@ class TicTacToe {
         this.dom.joinGameBtn.addEventListener('click', () => this.joinGame());
         this.dom.copyIdBtn.addEventListener('click', (e) => this.copyToClipboard(this.dom.displayGameId, e.target));
         this.dom.copyLinkBtn.addEventListener('click', (e) => this.copyToClipboard(this.dom.shareUrl, e.target));
+        
+        this.dom.shareWhatsappBtn.addEventListener('click', () => this.shareGame('whatsapp'));
+        this.dom.shareTelegramBtn.addEventListener('click', () => this.shareGame('telegram'));
+        this.dom.shareTwitterBtn.addEventListener('click', () => this.shareGame('twitter'));
+
         this.dom.restartBtn.addEventListener('click', () => this.handleRestart());
         this.dom.endGameBtn.addEventListener('click', () => this.endGame());
 
@@ -571,6 +581,28 @@ class TicTacToe {
             if (this.awayInterval) clearInterval(this.awayInterval);
             this.dom.opContainer.classList.remove('op-away');
             this.dom.opLabel.innerText = 'Opponent';
+        }
+    }
+
+    shareGame(platform) {
+        const url = encodeURIComponent(this.dom.shareUrl.innerText);
+        const text = encodeURIComponent("Join my Tic-Tac-Toe game!");
+        let shareUrl = '';
+
+        switch (platform) {
+            case 'whatsapp':
+                shareUrl = `https://wa.me/?text=${text}%20${url}`;
+                break;
+            case 'telegram':
+                shareUrl = `https://t.me/share/url?url=${url}&text=${text}`;
+                break;
+            case 'twitter':
+                shareUrl = `https://twitter.com/intent/tweet?text=${text}&url=${url}`;
+                break;
+        }
+
+        if (shareUrl) {
+            window.open(shareUrl, '_blank');
         }
     }
 
