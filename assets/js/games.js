@@ -65,6 +65,8 @@ class TicTacToe {
         this.dom.opContainer = document.getElementById('op-container');
         this.dom.opLabel = document.getElementById('op-label');
         this.dom.cells = document.querySelectorAll('.cell');
+        this.dom.gameOverModal = document.getElementById('gameOverModal');
+        this.dom.gameOverMessage = document.getElementById('gameOverMessage');
         
         // Buttons
         this.dom.createGameBtn = document.getElementById('create-game-btn');
@@ -468,9 +470,11 @@ class TicTacToe {
         if (this.myScore >= this.targetWins) {
             this.dom.status.innerText = 'Series Won!';
             this.dom.status.style.color = '#28a745';
+            this.showGameOverModal('You Won!', true);
         } else if (this.opponentScore >= this.targetWins) {
             this.dom.status.innerText = 'Series Lost!';
             this.dom.status.style.color = '#dc3545';
+            this.showGameOverModal('You Lost!', false);
         }
         this.updateButtonState();
     }
@@ -502,6 +506,17 @@ class TicTacToe {
             const opSymbol = this.mySymbol === 'X' ? 'O' : 'X';
             this.conn.send({ type: 'nextGame', symbol: opSymbol });
             this.resetBoard();
+        }
+    }
+
+    showGameOverModal(message, isWin) {
+        if (this.dom.gameOverMessage) {
+            this.dom.gameOverMessage.innerText = message;
+            this.dom.gameOverMessage.className = 'modal-body ' + (isWin ? 'text-success' : 'text-danger') + ' font-weight-bold';
+            this.dom.gameOverMessage.style.fontSize = '1.5rem';
+        }
+        if (this.dom.gameOverModal) {
+            $(this.dom.gameOverModal).modal('show');
         }
     }
 
