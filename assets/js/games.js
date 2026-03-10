@@ -7,6 +7,18 @@ const CONFIG = {
     MAX_JOIN_RETRIES: 10
 };
 
+const MSG_TYPE = {
+    VISIBILITY: 'visibility',
+    SYNC: 'sync',
+    START: 'start',
+    MOVE: 'move',
+    NEXT_GAME: 'nextGame',
+    REQUEST_NEXT: 'requestNext',
+    RESET_SERIES: 'resetSeries',
+    GAME_FULL: 'game-full',
+    END_GAME: 'end-game'
+};
+
 class TicTacToe {
     constructor() {
         this.peer = null;
@@ -27,6 +39,7 @@ class TicTacToe {
         this.joinRetryCount = 0;
         this.reconnectRetryCount = 0;
         this.connectionTimeout = null;
+        this.serverReconnectCount = 0;
 
         this.dom = {};
         this.init();
@@ -99,8 +112,8 @@ class TicTacToe {
 
         document.addEventListener("visibilitychange", () => {
             if (this.conn) {
-                this.conn.send({ 
-                    type: 'visibility', 
+                this.conn.send({
+                    type: MSG_TYPE.VISIBILITY,
                     status: document.hidden ? 'hidden' : 'visible' 
                 });
             }
@@ -124,6 +137,7 @@ class TicTacToe {
         this.peer.on('open', (id) => {
             this.myId = id;
             this.reconnectRetryCount = 0;
+            this.serverReconnectCount = 0;
             console.log('My peer ID is: ' + id);
             
             this.dom.createGameBtn.disabled = false;
@@ -165,7 +179,7 @@ class TicTacToe {
             
             if (this.gameActive || this.myScore > 0 || this.opponentScore > 0) {
                 const gameState = {
-                    type: 'sync',
+                    type: MSG_TYPE.SYNC,
                     symbol: this.mySymbol === 'X' ? 'O' : 'X',
                     targetWins: this.targetWins,
                     board: this.board,
@@ -175,13 +189,7 @@ class TicTacToe {
                     gameActive: this.gameActive
                 };
 
-                if (this.conn.open) {
-                    this.conn.send(gameState);
-                } else {
-                    this.conn.on('open', () => {
-                        this.conn.send(gameState);
-                    });
-                }
+                this._sendWhenReady(this.conn, gameState);
                 this.handleVisibilityChange('visible');
             } else {
                 this.mySymbol = 'X';
@@ -189,22 +197,13 @@ class TicTacToe {
                 const seriesLength = parseInt(this.dom.seriesLength.value) || 1;
                 this.targetWins = Math.ceil(seriesLength / 2);
                 this.startGame();
-                
-                if (this.conn.open) {
-                    this.conn.send({ type: 'start', symbol: 'O', targetWins: this.targetWins });
-                } else {
-                    this.conn.on('open', () => {
-                        this.conn.send({ type: 'start', symbol: 'O', targetWins: this.targetWins });
-                    });
-                }
+
+                this._sendWhenReady(this.conn, { type: MSG_TYPE.START, symbol: 'O', targetWins: this.targetWins });
             }
         });
         
         this.peer.on('disconnected', () => {
-            if (!this.peer.destroyed) {
-                console.log('Connection to PeerServer disconnected. Reconnecting...');
-                this.peer.reconnect();
-            }
+            console.log('Connection to PeerServer disconnected. It will reconnect automatically.');
         });
         
         this.peer.on('error', (err) => {
@@ -236,15 +235,16 @@ class TicTacToe {
                 }
             }
             if (err.type === 'network' || err.type === 'server-error') {
-                this.dom.connectedScreen.style.display = 'none';
-                this.dom.connectingScreen.style.display = 'block';
-                const urlParams = new URLSearchParams(window.location.search);
-                if (urlParams.get('join')) {
-                    this.dom.connectingText.innerText = "Connecting to host...";
+                const MAX_SERVER_RECONNECTS = 5;
+                if (this.serverReconnectCount < MAX_SERVER_RECONNECTS) {
+                    this.serverReconnectCount++;
+                    this.dom.connectedScreen.style.display = 'none';
+                    this.dom.connectingScreen.style.display = 'block';
+                    this.dom.connectingText.innerText = `Reconnecting to server... (${this.serverReconnectCount}/${MAX_SERVER_RECONNECTS})`;
+                    setTimeout(() => this.initPeer(), 2000);
                 } else {
-                    this.dom.connectingText.innerText = "Reconnecting...";
+                    alert('Could not connect to the server. Please refresh the page to try again.');
                 }
-                setTimeout(() => this.initPeer(), 2000);
                 return;
             }
             alert('Connection error: ' + err.type);
@@ -320,9 +320,20 @@ class TicTacToe {
         });
     }
 
+    _sendWhenReady(connection, data) {
+        if (connection.open) {
+            connection.send(data);
+        } else {
+            // Use 'once' to avoid potential multiple sends on a flaky connection
+            connection.once('open', () => {
+                connection.send(data);
+            });
+        }
+    }
+
     handleData(data) {
         switch (data.type) {
-            case 'start':
+            case MSG_TYPE.START:
                 this.mySymbol = data.symbol;
                 this.targetWins = data.targetWins;
                 this.currentTurn = 'X';
@@ -330,7 +341,7 @@ class TicTacToe {
                 this.opponentScore = 0;
                 this.startGame();
                 break;
-            case 'sync':
+            case MSG_TYPE.SYNC:
                 this.mySymbol = data.symbol;
                 this.targetWins = data.targetWins;
                 this.board = data.board;
@@ -370,20 +381,20 @@ class TicTacToe {
                 }
                 this.updateButtonState();
                 break;
-            case 'move':
+            case MSG_TYPE.MOVE:
                 this.makeMove(data.index, data.symbol);
                 break;
-            case 'nextGame':
+            case MSG_TYPE.NEXT_GAME:
                 this.mySymbol = data.symbol;
                 this.resetBoard();
                 break;
-            case 'requestNext':
+            case MSG_TYPE.REQUEST_NEXT:
                 if (this.isHost) this.handleRestart();
                 break;
-            case 'resetSeries':
+            case MSG_TYPE.RESET_SERIES:
                 this.fullReset();
                 break;
-            case 'game-full':
+            case MSG_TYPE.GAME_FULL:
                 this.connectionRejected = true;
                 alert('The game is already full.');
                 const url = new URL(window.location.href);
@@ -391,10 +402,10 @@ class TicTacToe {
                 window.history.replaceState({}, document.title, url.toString());
                 location.reload();
                 break;
-            case 'visibility':
+            case MSG_TYPE.VISIBILITY:
                 this.handleVisibilityChange(data.status);
                 break;
-            case 'end-game':
+            case MSG_TYPE.END_GAME:
                 alert('Opponent ended the game.');
                 window.location.href = window.location.pathname;
                 break;
@@ -447,7 +458,7 @@ class TicTacToe {
         if (!this.gameActive || this.board[index] !== '' || this.currentTurn !== this.mySymbol) return;
 
         this.makeMove(index, this.mySymbol);
-        this.conn.send({ type: 'move', index: index, symbol: this.mySymbol });
+        this.conn.send({ type: MSG_TYPE.MOVE, index: index, symbol: this.mySymbol });
     }
 
     makeMove(index, symbol) {
@@ -510,17 +521,17 @@ class TicTacToe {
         if (!this.conn) return;
 
         if (!this.isHost) {
-            this.conn.send({ type: 'requestNext' });
+            this.conn.send({ type: MSG_TYPE.REQUEST_NEXT });
             return;
         }
 
         if (this.myScore >= this.targetWins || this.opponentScore >= this.targetWins) {
-            this.conn.send({ type: 'resetSeries' });
+            this.conn.send({ type: MSG_TYPE.RESET_SERIES });
             this.fullReset();
         } else {
             this.mySymbol = this.mySymbol === 'X' ? 'O' : 'X';
             const opSymbol = this.mySymbol === 'X' ? 'O' : 'X';
-            this.conn.send({ type: 'nextGame', symbol: opSymbol });
+            this.conn.send({ type: MSG_TYPE.NEXT_GAME, symbol: opSymbol });
             this.resetBoard();
         }
     }
@@ -538,7 +549,7 @@ class TicTacToe {
 
     endGame() {
         if (this.conn && this.conn.open) {
-            this.conn.send({ type: 'end-game' });
+            this.conn.send({ type: MSG_TYPE.END_GAME });
         }
         alert('Game ended.');
         window.location.href = window.location.pathname;
