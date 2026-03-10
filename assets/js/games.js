@@ -133,7 +133,7 @@ class TicTacToe {
             const joinId = urlParams.get('join');
             if (joinId) {
                 this.dom.joinGameId.value = joinId;
-                this.joinGame();
+                setTimeout(() => this.joinGame(), 1000);
             } else if (this.isHost) {
                 this.dom.displayGameId.innerText = this.myId;
                 const url = new URL(window.location.href);
@@ -277,6 +277,12 @@ class TicTacToe {
 
         this.conn = this.peer.connect(joinId);
         
+        this.conn.on('error', (err) => {
+            console.error('Connection error:', err);
+            if (this.connectionTimeout) clearTimeout(this.connectionTimeout);
+            this.peer.emit('error', { type: 'peer-unavailable' });
+        });
+
         if (this.connectionTimeout) clearTimeout(this.connectionTimeout);
         this.connectionTimeout = setTimeout(() => {
             if (this.conn && !this.conn.open) {
