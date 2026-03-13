@@ -177,28 +177,38 @@ class TicTacToe {
             this.isHost = true;
             this.setupConnection();
             
-            if (this.gameActive || this.myScore > 0 || this.opponentScore > 0) {
-                const gameState = {
-                    type: MSG_TYPE.SYNC,
-                    symbol: this.mySymbol === 'X' ? 'O' : 'X',
-                    targetWins: this.targetWins,
-                    board: this.board,
-                    currentTurn: this.currentTurn,
-                    myScore: this.opponentScore,
-                    opponentScore: this.myScore,
-                    gameActive: this.gameActive
-                };
+            const onConnectionOpen = () => {
+                if (this.conn !== c) return;
 
-                this._sendWhenReady(this.conn, gameState);
-                this.handleVisibilityChange('visible');
+                if (this.gameActive || this.myScore > 0 || this.opponentScore > 0) {
+                    const gameState = {
+                        type: MSG_TYPE.SYNC,
+                        symbol: this.mySymbol === 'X' ? 'O' : 'X',
+                        targetWins: this.targetWins,
+                        board: this.board,
+                        currentTurn: this.currentTurn,
+                        myScore: this.opponentScore,
+                        opponentScore: this.myScore,
+                        gameActive: this.gameActive
+                    };
+
+                    c.send(gameState);
+                    this.handleVisibilityChange('visible');
+                } else {
+                    this.mySymbol = 'X';
+                    this.currentTurn = 'X';
+                    const seriesLength = parseInt(this.dom.seriesLength.value) || 1;
+                    this.targetWins = Math.ceil(seriesLength / 2);
+                    this.startGame();
+
+                    c.send({ type: MSG_TYPE.START, symbol: 'O', targetWins: this.targetWins });
+                }
+            };
+
+            if (c.open) {
+                onConnectionOpen();
             } else {
-                this.mySymbol = 'X';
-                this.currentTurn = 'X';
-                const seriesLength = parseInt(this.dom.seriesLength.value) || 1;
-                this.targetWins = Math.ceil(seriesLength / 2);
-                this.startGame();
-
-                this._sendWhenReady(this.conn, { type: MSG_TYPE.START, symbol: 'O', targetWins: this.targetWins });
+                c.once('open', onConnectionOpen);
             }
         });
         
