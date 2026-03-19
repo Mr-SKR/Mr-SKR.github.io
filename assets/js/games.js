@@ -17,7 +17,9 @@ const MSG_TYPE = {
     RESET_SERIES: 'resetSeries',
     GAME_FULL: 'game-full',
     END_GAME: 'end-game',
-    HELLO: 'hello'
+    HELLO: 'hello',
+    PING: 'ping',
+    PONG: 'pong'
 };
 
 class TicTacToe {
@@ -41,6 +43,7 @@ class TicTacToe {
         this.reconnectRetryCount = 0;
         this.connectionTimeout = null;
         this.serverReconnectCount = 0;
+        this.heartbeatInterval = null;
 
         this.dom = {};
         this.init();
@@ -113,7 +116,7 @@ class TicTacToe {
 
         document.addEventListener("visibilitychange", () => {
             if (this.conn) {
-                this.conn.send({
+                this._sendWhenReady(this.conn, {
                     type: MSG_TYPE.VISIBILITY,
                     status: document.hidden ? 'hidden' : 'visible' 
                 });
@@ -129,10 +132,20 @@ class TicTacToe {
             }
         }
 
+        const peerConfig = {
+            config: {
+                iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:global.stun.twilio.com:3478' }
+                ]
+            },
+            pingInterval: 5000
+        };
+
         if (this.myId) {
-            this.peer = new Peer(this.myId);
+            this.peer = new Peer(this.myId, peerConfig);
         } else {
-            this.peer = new Peer();
+            this.peer = new Peer(peerConfig);
         }
 
         this.peer.on('open', (id) => {
@@ -252,7 +265,7 @@ class TicTacToe {
             this.conn.close();
         }
 
-        this.conn = this.peer.connect(joinId);
+        this.conn = this.peer.connect(joinId, { reliable: true });
         
         this.conn.on('error', (err) => {
             console.error('Connection error:', err);
@@ -284,14 +297,20 @@ class TicTacToe {
             console.log('Connected to: ' + connection.peer);
             this.joinRetryCount = 0;
 
+            if (this.heartbeatInterval) clearInterval(this.heartbeatInterval);
+            this.heartbeatInterval = setInterval(() => {
+                this._sendWhenReady(connection, { type: MSG_TYPE.PING });
+            }, 3000);
+
             if (!this.isHost) {
-                connection.send({ type: MSG_TYPE.HELLO });
+                this._sendWhenReady(connection, { type: MSG_TYPE.HELLO });
             }
         });
 
         connection.on('data', (data) => this.handleData(data));
         
         connection.on('close', () => {
+            if (this.heartbeatInterval) clearInterval(this.heartbeatInterval);
             if (this.awayInterval) clearInterval(this.awayInterval);
             if (this.awayTimeout) clearTimeout(this.awayTimeout);
             if (this.conn === connection && !this.connectionRejected) {
@@ -302,18 +321,33 @@ class TicTacToe {
     }
 
     _sendWhenReady(connection, data) {
+        if (!connection) return;
         if (connection.open) {
-            connection.send(data);
+            try {
+                connection.send(data);
+            } catch (e) {
+                console.error("Failed to send data:", e);
+            }
         } else {
             // Use 'once' to avoid potential multiple sends on a flaky connection
             connection.once('open', () => {
-                connection.send(data);
+                try {
+                    connection.send(data);
+                } catch (e) {
+                    console.error("Failed to send data:", e);
+                }
             });
         }
     }
 
     handleData(data) {
         switch (data.type) {
+            case MSG_TYPE.PING:
+                this._sendWhenReady(this.conn, { type: MSG_TYPE.PONG });
+                break;
+            case MSG_TYPE.PONG:
+                // Connection is alive
+                break;
             case MSG_TYPE.HELLO:
                 if (this.isHost) {
                     if (this.gameActive || this.myScore > 0 || this.opponentScore > 0) {
@@ -327,7 +361,7 @@ class TicTacToe {
                             opponentScore: this.myScore,
                             gameActive: this.gameActive
                         };
-                        this.conn.send(gameState);
+                        this._sendWhenReady(this.conn, gameState);
                         this.handleVisibilityChange('visible');
                     } else {
                         this.mySymbol = 'X';
@@ -335,7 +369,7 @@ class TicTacToe {
                         const seriesLength = parseInt(this.dom.seriesLength.value) || 1;
                         this.targetWins = Math.ceil(seriesLength / 2);
                         this.startGame();
-                        this.conn.send({ type: MSG_TYPE.START, symbol: 'O', targetWins: this.targetWins });
+                        this._sendWhenReady(this.conn, { type: MSG_TYPE.START, symbol: 'O', targetWins: this.targetWins });
                     }
                 }
                 break;
@@ -464,7 +498,7 @@ class TicTacToe {
         if (!this.gameActive || this.board[index] !== '' || this.currentTurn !== this.mySymbol) return;
 
         this.makeMove(index, this.mySymbol);
-        this.conn.send({ type: MSG_TYPE.MOVE, index: index, symbol: this.mySymbol });
+        this._sendWhenReady(this.conn, { type: MSG_TYPE.MOVE, index: index, symbol: this.mySymbol });
     }
 
     makeMove(index, symbol) {
@@ -527,17 +561,17 @@ class TicTacToe {
         if (!this.conn) return;
 
         if (!this.isHost) {
-            this.conn.send({ type: MSG_TYPE.REQUEST_NEXT });
+            this._sendWhenReady(this.conn, { type: MSG_TYPE.REQUEST_NEXT });
             return;
         }
 
         if (this.myScore >= this.targetWins || this.opponentScore >= this.targetWins) {
-            this.conn.send({ type: MSG_TYPE.RESET_SERIES });
+            this._sendWhenReady(this.conn, { type: MSG_TYPE.RESET_SERIES });
             this.fullReset();
         } else {
             this.mySymbol = this.mySymbol === 'X' ? 'O' : 'X';
             const opSymbol = this.mySymbol === 'X' ? 'O' : 'X';
-            this.conn.send({ type: MSG_TYPE.NEXT_GAME, symbol: opSymbol });
+            this._sendWhenReady(this.conn, { type: MSG_TYPE.NEXT_GAME, symbol: opSymbol });
             this.resetBoard();
         }
     }
@@ -555,7 +589,7 @@ class TicTacToe {
 
     endGame() {
         if (this.conn && this.conn.open) {
-            this.conn.send({ type: MSG_TYPE.END_GAME });
+            this._sendWhenReady(this.conn, { type: MSG_TYPE.END_GAME });
         }
         alert('Game ended.');
         window.location.href = window.location.pathname;
