@@ -144,13 +144,42 @@
     return false;
   });
 
-  // Init AOS
-  $(window).on("load", function () {
-    AOS.init({
-      duration: 1000,
-      once: true,
+  // Init AOS.
+  // AOS hides every [data-aos] element with opacity:0 until it initialises, so
+  // if it never runs the page renders blank while still being full height. Bind
+  // defensively and verify afterwards.
+  function initAos() {
+    try {
+      AOS.init({
+        duration: 1000,
+        once: true,
+      });
+    } catch (e) {
+      console.error("AOS failed to initialise:", e);
+    }
+  }
+
+  if (document.readyState === "complete") {
+    initAos();
+  } else {
+    $(window).on("load", initAos);
+  }
+
+  // Failsafe: if AOS never initialised (script blocked, error earlier in this
+  // file, cached/version mismatch), strip the attributes so the content is
+  // simply shown without animation rather than staying invisible.
+  setTimeout(function () {
+    if (document.querySelector("[data-aos].aos-init")) return;
+    var hidden = document.querySelectorAll("[data-aos]");
+    if (!hidden.length) return;
+    console.warn(
+      "AOS did not initialise; revealing " + hidden.length + " elements without animation."
+    );
+    Array.prototype.forEach.call(hidden, function (el) {
+      el.removeAttribute("data-aos");
+      el.removeAttribute("data-aos-delay");
     });
-  });
+  }, 4000);
 
   // Service worker
   if ("serviceWorker" in navigator && window.location.protocol !== "file:") {

@@ -1,7 +1,7 @@
 // One cache for both precached and runtime-fetched entries. Using two caches
 // would let the precached copy permanently shadow the revalidated one, since
 // caches.match() searches caches in creation order.
-const VERSION = "v5";
+const VERSION = "v6";
 const CACHE = `site-${VERSION}`;
 
 // App shell. Everything else (images, fonts) is cached at runtime on first use.
@@ -95,10 +95,20 @@ async function staleWhileRevalidate(request) {
       }
       return response;
     })
-    .catch(() => cached);
+    // With nothing cached and the network down, returning undefined here would
+    // make respondWith() fail the request outright. Surface a real response.
+    .catch(
+      () => cached || new Response("", { status: 504, statusText: "Offline" }),
+    );
 
   return cached || fetching;
 }
+
+// Scripts and stylesheets must stay in lockstep with the HTML that loads them.
+// Serving a stale bundle alongside fresh markup breaks the page: the old script
+// calls into libraries the new markup no longer includes, throws, and takes
+// everything after it down with it. Images and fonts are safe to serve stale.
+const CODE_ASSET = /\.(?:js|css)$/i;
 
 self.addEventListener("fetch", (event) => {
   const request = event.request;
@@ -108,7 +118,7 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
 
-  if (request.mode === "navigate") {
+  if (request.mode === "navigate" || CODE_ASSET.test(url.pathname)) {
     event.respondWith(networkFirst(request));
     return;
   }
