@@ -54,7 +54,7 @@
         if ($("body").hasClass("mobile-nav-active")) {
           $("body").removeClass("mobile-nav-active");
           $(".mobile-nav-toggle i").toggleClass(
-            "icofont-navigation-menu icofont-close"
+            "bx-menu bx-x"
           );
         }
         return false;
@@ -82,7 +82,7 @@
   $(document).on("click", ".mobile-nav-toggle", function (e) {
     $("body").toggleClass("mobile-nav-active");
     $(".mobile-nav-toggle i").toggleClass(
-      "icofont-navigation-menu icofont-close"
+      "bx-menu bx-x"
     );
   });
 
@@ -92,7 +92,7 @@
       if ($("body").hasClass("mobile-nav-active")) {
         $("body").removeClass("mobile-nav-active");
         $(".mobile-nav-toggle i").toggleClass(
-          "icofont-navigation-menu icofont-close"
+          "bx-menu bx-x"
         );
       }
     }
@@ -144,70 +144,22 @@
     return false;
   });
 
-  // jQuery counterUp
-  $('[data-toggle="counter-up"]').counterUp({
-    delay: 10,
-    time: 1000,
-  });
-
-  // Skills section
-  $(".skills-content").waypoint(
-    function () {
-      $(".progress .progress-bar").each(function () {
-        $(this).css("width", $(this).attr("aria-valuenow") + "%");
-      });
-    },
-    {
-      offset: "80%",
-    }
-  );
-
   // Init AOS
-  function aos_init() {
+  $(window).on("load", function () {
     AOS.init({
       duration: 1000,
       once: true,
     });
+  });
+
+  // Service worker
+  if ("serviceWorker" in navigator && window.location.protocol !== "file:") {
+    $(window).on("load", function () {
+      navigator.serviceWorker
+        .register("/sw.js")
+        .catch(function (err) {
+          console.log("ServiceWorker registration failed: ", err);
+        });
+    });
   }
-
-  // Porfolio isotope and filter
-  $(window).on("load", function () {
-    var portfolioIsotope = $(".portfolio-container").isotope({
-      itemSelector: ".portfolio-item",
-    });
-
-    $("#portfolio-flters li").on("click", function () {
-      $("#portfolio-flters li").removeClass("filter-active");
-      $(this).addClass("filter-active");
-
-      portfolioIsotope.isotope({
-        filter: $(this).data("filter"),
-      });
-      aos_init();
-    });
-
-    // Initiate venobox (lightbox feature used in portofilo)
-    $(".venobox").venobox({
-      share: false,
-    });
-
-    // Initiate aos_init() function
-    aos_init();
-  });
-
-  // Testimonials carousel (uses the Owl Carousel library)
-  $(".testimonials-carousel").owlCarousel({
-    autoplay: true,
-    dots: true,
-    loop: true,
-    items: 1,
-  });
-
-  // Portfolio details carousel
-  $(".portfolio-details-carousel").owlCarousel({
-    autoplay: true,
-    dots: true,
-    loop: true,
-    items: 1,
-  });
 })(jQuery);
