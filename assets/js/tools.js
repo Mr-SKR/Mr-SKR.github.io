@@ -20,6 +20,14 @@
     return text.replace(htmlEscapesRegex, (match) => htmlEscapes[match]);
   }
 
+  // jsrsasign throws bare strings rather than Errors for things like a malformed
+  // PEM, and "Error: " + e.message renders those as "Error: undefined".
+  function errorText(e) {
+    if (e && e.message) return e.message;
+    if (typeof e === "string" && e) return e;
+    return String(e);
+  }
+
   function debounce(func, wait) {
     let timeout;
     return function (...args) {
@@ -729,6 +737,49 @@
 
   // --- JWT Tools ---
 
+  // jsrsasign is 341 KB and only RS/PS/ES signing and verification need it --
+  // HMAC is handled by crypto-js, which is a fraction of the size. Fetching it
+  // on demand keeps it off the critical path for the majority of visitors who
+  // never touch an asymmetric algorithm.
+  //
+  // Load order still matters once it arrives: jsrsasign carries its own
+  // CryptoJS 3.1.2 behind `var CryptoJS = CryptoJS || (...)`, so crypto-js 4.x
+  // must already be global (it is -- it ships in the page) or every HMAC on
+  // this page would silently downgrade.
+  const JSRSASIGN_SRC = "assets/js/jsrsasign-all-min.js";
+  let jsrsasignLoad = null;
+
+  function loadJsrsasign() {
+    if (typeof KJUR !== "undefined") return Promise.resolve();
+    if (!jsrsasignLoad) {
+      jsrsasignLoad = new Promise((resolve, reject) => {
+        const script = document.createElement("script");
+        script.src = JSRSASIGN_SRC;
+        script.onload = () => resolve();
+        script.onerror = () => {
+          // Cleared so a later attempt can retry rather than reusing the
+          // rejected promise forever.
+          jsrsasignLoad = null;
+          reject(new Error("Could not load the signature library"));
+        };
+        document.head.appendChild(script);
+      });
+    }
+    return jsrsasignLoad;
+  }
+
+  const ASYMMETRIC_ALGS = [
+    "RS256",
+    "RS384",
+    "RS512",
+    "PS256",
+    "PS384",
+    "PS512",
+    "ES256",
+    "ES384",
+    "ES512",
+  ];
+
   function base64UrlEncode(str) {
     return btoa(unescape(encodeURIComponent(str)))
       .replace(/\+/g, "-")
@@ -743,7 +794,7 @@
       .replace(/=+$/, "");
   }
 
-  function decodeJWT() {
+  async function decodeJWT() {
     let input = document.getElementById("jwtInput").value.trim();
     const secret = document.getElementById("jwtVerifySecret").value;
     const publicKey = document.getElementById("jwtVerifyPublicKey").value;
@@ -776,67 +827,75 @@
       payloadCopyBtn.disabled = false;
 
       const alg = header.alg ? header.alg.toUpperCase() : "HS256";
+      const parts = input.split(".");
 
-      if (alg.startsWith("HS")) {
-        const parts = input.split(".");
-        if (parts.length === 3) {
-          const signatureToVerify = `${parts[0]}.${parts[1]}`;
-          let calculatedSignature;
+      // Cleared up front. Every branch below either sets its own status or
+      // deliberately leaves none, and the previous token's result must never
+      // be left standing where it reads as a verdict on this one.
+      verificationStatus.textContent = "";
 
-          if (alg === "HS256") {
-            calculatedSignature = CryptoJS.HmacSHA256(signatureToVerify, secret);
-          } else if (alg === "HS384") {
-            calculatedSignature = CryptoJS.HmacSHA384(signatureToVerify, secret);
-          } else if (alg === "HS512") {
-            calculatedSignature = CryptoJS.HmacSHA512(signatureToVerify, secret);
-          } else {
-            verificationStatus.innerHTML = `<span class="text-warning"><i class="bx bx-error"></i> Algorithm ${alg} not supported for verification</span>`;
+      const verified = () => {
+        verificationStatus.innerHTML =
+          '<span class="text-success"><i class="bx bx-check-circle"></i> Signature Verified</span>';
+      };
+      const invalid = () => {
+        verificationStatus.innerHTML =
+          '<span class="text-danger"><i class="bx bx-x-circle"></i> Invalid Signature</span>';
+      };
+      // alg comes straight out of an untrusted token, so it is escaped before
+      // it ever reaches innerHTML.
+      const needs = (what) => {
+        verificationStatus.innerHTML = `<span class="text-warning"><i class="bx bx-error"></i> ${escapeHtml(what)}</span>`;
+      };
+
+      if (parts.length !== 3 || !parts[2]) {
+        needs("No signature on this token to verify");
+      } else if (alg.startsWith("HS")) {
+        const signatureToVerify = `${parts[0]}.${parts[1]}`;
+        const hmac = {
+          HS256: CryptoJS.HmacSHA256,
+          HS384: CryptoJS.HmacSHA384,
+          HS512: CryptoJS.HmacSHA512,
+        }[alg];
+
+        if (!hmac) {
+          needs(`Algorithm ${alg} not supported for verification`);
+        } else if (!secret) {
+          // Hashing with an empty secret and reporting "Invalid Signature"
+          // blames the token for a field the user simply has not filled in.
+          needs("Secret required for verification");
+        } else if (
+          wordArrayToBase64Url(hmac(signatureToVerify, secret)) === parts[2]
+        ) {
+          verified();
+        } else {
+          invalid();
+        }
+      } else if (ASYMMETRIC_ALGS.includes(alg)) {
+        if (!publicKey) {
+          needs("Public Key required for verification");
+        } else {
+          // Header and payload are already on screen; only the verdict waits
+          // on the library, so say so rather than looking frozen.
+          needs("Loading signature library…");
+          try {
+            await loadJsrsasign();
+          } catch (err) {
+            needs("Could not load the signature library");
             return;
           }
-
-          const calculatedSignatureBase64Url =
-            wordArrayToBase64Url(calculatedSignature);
-
-          if (calculatedSignatureBase64Url === parts[2]) {
-            verificationStatus.innerHTML =
-              '<span class="text-success"><i class="bx bx-check-circle"></i> Signature Verified</span>';
+          if (KJUR.jws.JWS.verify(input, publicKey, [alg])) {
+            verified();
           } else {
-            verificationStatus.innerHTML =
-              '<span class="text-danger"><i class="bx bx-x-circle"></i> Invalid Signature</span>';
+            invalid();
           }
-        }
-      } else if (
-        [
-          "RS256",
-          "RS384",
-          "RS512",
-          "PS256",
-          "PS384",
-          "PS512",
-          "ES256",
-          "ES384",
-          "ES512",
-        ].includes(alg)
-      ) {
-        if (publicKey) {
-          const isValid = KJUR.jws.JWS.verify(input, publicKey, [alg]);
-          if (isValid) {
-            verificationStatus.innerHTML =
-              '<span class="text-success"><i class="bx bx-check-circle"></i> Signature Verified</span>';
-          } else {
-            verificationStatus.innerHTML =
-              '<span class="text-danger"><i class="bx bx-x-circle"></i> Invalid Signature</span>';
-          }
-        } else {
-          verificationStatus.innerHTML =
-            '<span class="text-warning"><i class="bx bx-error"></i> Public Key required for verification</span>';
         }
       } else {
-        verificationStatus.textContent = "";
+        needs(`Algorithm ${alg} not supported for verification`);
       }
     } catch (e) {
       headerOutput.textContent = "Error decoding token";
-      payloadOutput.textContent = "Error: " + e.message;
+      payloadOutput.textContent = "Error: " + errorText(e);
       verificationStatus.textContent = "";
       headerCopyBtn.disabled = true;
       payloadCopyBtn.disabled = true;
@@ -846,6 +905,15 @@
   function updateJwtHeader() {
     const alg = document.getElementById("jwtAlgSelect").value;
     const headerInput = document.getElementById("jwtHeaderInput");
+
+    // Picking RS/PS/ES is the earliest reliable signal that the library will be
+    // wanted. Warming it here means the download overlaps with the user typing
+    // their key instead of stalling the Encode click. Failure is ignored: the
+    // real attempt at sign time surfaces it.
+    if (ASYMMETRIC_ALGS.includes(alg)) {
+      loadJsrsasign().catch(() => {});
+    }
+
     try {
       const header = JSON.parse(headerInput.value);
       header.alg = alg;
@@ -860,7 +928,7 @@
     checkInput("jwtHeaderInput", "jwtHeaderInputCopyBtn");
   }
 
-  function encodeJWT() {
+  async function encodeJWT() {
     const headerInput = document.getElementById("jwtHeaderInput").value;
     const payloadInput = document.getElementById("jwtPayloadInput").value;
     const secret = document.getElementById("jwtSecretInput").value;
@@ -896,21 +964,10 @@
 
         const base64Signature = wordArrayToBase64Url(signature);
         token += `.${base64Signature}`;
-      } else if (
-        [
-          "RS256",
-          "RS384",
-          "RS512",
-          "PS256",
-          "PS384",
-          "PS512",
-          "ES256",
-          "ES384",
-          "ES512",
-        ].includes(alg)
-      ) {
+      } else if (ASYMMETRIC_ALGS.includes(alg)) {
         if (!privateKey)
           throw new Error(`Private Key required for ${alg} algorithm`);
+        await loadJsrsasign();
         token = KJUR.jws.JWS.sign(
           alg,
           JSON.stringify(header),
@@ -925,7 +982,7 @@
       output.style.borderColor = "#ced4da";
       copyBtn.disabled = false;
     } catch (e) {
-      output.value = "Error: " + e.message;
+      output.value = "Error: " + errorText(e);
       output.style.borderColor = "red";
       copyBtn.disabled = true;
     }

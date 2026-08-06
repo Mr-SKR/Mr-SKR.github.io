@@ -71,12 +71,16 @@
     <link rel="manifest" href="manifest.json" />
     <meta name="theme-color" content="#0563bb" />
 
-    <!-- Google Fonts: only the weights the stylesheet actually uses, swap so text paints immediately -->
+    <!-- Google Fonts. Only the 8 variants actually rendered anywhere on the site
+       (measured, not guessed): Open Sans 400/700/400i, Poppins 400/600,
+       Raleway 500/600/700. Loaded off the critical path via media="print" --
+       display=swap already means text paints in the fallback first, so there is
+       nothing to gain from blocking render on the third-party round trip. -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-        href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,400;0,600;0,700;1,400&family=Poppins:ital,wght@0,400;0,600;0,700;1,400&family=Raleway:ital,wght@0,400;0,600;0,700;1,400&display=swap"
-        rel="stylesheet" />
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,400;0,700;1,400&family=Poppins:wght@400;600&family=Raleway:wght@500;600;700&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,400;0,700;1,400&family=Poppins:wght@400;600&family=Raleway:wght@500;600;700&display=swap" media="print" onload="this.media='all'" />
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,400;0,700;1,400&family=Poppins:wght@400;600&family=Raleway:wght@500;600;700&display=swap" /></noscript>
 
     <!-- Vendor CSS Files -->
     <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet" />
@@ -106,12 +110,27 @@
             font-weight: bold;
             cursor: pointer;
             transition: background-color 0.3s;
+            /* These are <button>s so they can be reached and played from the
+               keyboard; the resets below keep them looking like plain tiles. */
+            font-family: inherit;
+            line-height: 1;
+            padding: 0;
+            -webkit-appearance: none;
+            appearance: none;
         }
 
-        .cell:hover {
+        .cell:hover:not(.taken) {
             background-color: #f8f9fa;
         }
 
+        .cell:focus-visible {
+            outline: 3px solid #0563bb;
+            outline-offset: 2px;
+        }
+
+        /* Played squares use aria-disabled rather than the disabled attribute:
+           a disabled button drops out of the tab order, and a screen reader user
+           needs to arrow across the whole board to read the position. */
         .cell.taken {
             cursor: not-allowed;
         }
@@ -147,7 +166,7 @@
 
 <body>
     <!-- ======= Mobile nav toggle button ======= -->
-    <button type="button" class="mobile-nav-toggle d-xl-none">
+    <button type="button" class="mobile-nav-toggle d-xl-none" aria-label="Toggle navigation" aria-expanded="false" aria-controls="header">
         <i class="bx bx-menu" aria-hidden="true"></i>
     </button>
 
@@ -156,22 +175,22 @@
         <nav class="nav-menu" aria-label="Main navigation">
             <ul>
                 <li>
-                    <a href="index.html"><i class="bx bx-home"></i> <span>Home</span></a>
+                    <a href="index.html"><i class="bx bx-home" aria-hidden="true"></i> <span>Home</span></a>
                 </li>
                 <li>
-                    <a href="index.html#about"><i class="bx bx-user"></i> <span>About</span></a>
+                    <a href="index.html#about"><i class="bx bx-user" aria-hidden="true"></i> <span>About</span></a>
                 </li>
                 <li>
-                    <a href="index.html#skills"><i class="bx bx-book-content"></i> <span>Skills</span></a>
+                    <a href="index.html#skills"><i class="bx bx-book-content" aria-hidden="true"></i> <span>Skills</span></a>
                 </li>
                 <li>
-                    <a href="index.html#resume"><i class="bx bx-file-blank"></i> <span>Resume</span></a>
+                    <a href="index.html#resume"><i class="bx bx-file-blank" aria-hidden="true"></i> <span>Resume</span></a>
                 </li>
                 <li>
-                    <a href="tools.html"><i class="bx bx-wrench"></i> <span>Tools</span></a>
+                    <a href="tools.html"><i class="bx bx-wrench" aria-hidden="true"></i> <span>Tools</span></a>
                 </li>
                 <li class="active">
-                    <a href="games.html"><i class="bx bx-joystick"></i> <span>Games</span></a>
+                    <a href="games.html"><i class="bx bx-joystick" aria-hidden="true"></i> <span>Games</span></a>
                 </li>
             </ul>
         </nav>
@@ -217,9 +236,9 @@
                         <button id="copy-id-btn" class="btn btn-sm btn-secondary">Copy ID</button>
                         <button id="copy-link-btn" class="btn btn-sm btn-secondary">Copy Link</button>
                         <div class="mt-2">
-                            <button id="share-whatsapp-btn" class="btn btn-sm btn-success" title="Share on WhatsApp"><i class="bx bxl-whatsapp"></i></button>
-                            <button id="share-telegram-btn" class="btn btn-sm btn-info" title="Share on Telegram"><i class="bx bxl-telegram"></i></button>
-                            <button id="share-twitter-btn" class="btn btn-sm btn-primary" title="Share on Twitter"><i class="bx bxl-twitter"></i></button>
+                            <button id="share-whatsapp-btn" aria-label="Share on WhatsApp" class="btn btn-sm btn-success" title="Share on WhatsApp"><i class="bx bxl-whatsapp" aria-hidden="true"></i></button>
+                            <button id="share-telegram-btn" aria-label="Share on Telegram" class="btn btn-sm btn-info" title="Share on Telegram"><i class="bx bxl-telegram" aria-hidden="true"></i></button>
+                            <button id="share-twitter-btn" aria-label="Share on Twitter" class="btn btn-sm btn-primary" title="Share on Twitter"><i class="bx bxl-twitter" aria-hidden="true"></i></button>
                         </div>
                     </div>
                     <div id="connecting-screen" style="display: none;">
@@ -229,22 +248,22 @@
                         <p id="connecting-text" class="mt-2">Connecting...</p>
                     </div>
                     <div id="connected-screen" style="display: none;">
-                        <div id="scoreboard" class="mb-3 font-weight-bold">
+                        <div id="scoreboard" class="mb-3 font-weight-bold" aria-live="polite">
                             <span class="text-primary">You: <span id="my-score">0</span></span> |
                             <span class="text-secondary" id="op-container"><span id="op-label">Opponent</span>: <span id="op-score">0</span></span>
                             <div class="small text-muted mt-1">Target: <span id="target-score">1</span> wins</div>
                         </div>
-                        <div id="status"></div>
-                        <div class="game-board" id="board">
-                            <div class="cell" data-index="0"></div>
-                            <div class="cell" data-index="1"></div>
-                            <div class="cell" data-index="2"></div>
-                            <div class="cell" data-index="3"></div>
-                            <div class="cell" data-index="4"></div>
-                            <div class="cell" data-index="5"></div>
-                            <div class="cell" data-index="6"></div>
-                            <div class="cell" data-index="7"></div>
-                            <div class="cell" data-index="8"></div>
+                        <div id="status" role="status" aria-live="polite"></div>
+                        <div class="game-board" id="board" role="group" aria-label="Tic-tac-toe board">
+                            <button type="button" class="cell" data-index="0" aria-label="Row 1, column 1, empty"></button>
+                            <button type="button" class="cell" data-index="1" aria-label="Row 1, column 2, empty"></button>
+                            <button type="button" class="cell" data-index="2" aria-label="Row 1, column 3, empty"></button>
+                            <button type="button" class="cell" data-index="3" aria-label="Row 2, column 1, empty"></button>
+                            <button type="button" class="cell" data-index="4" aria-label="Row 2, column 2, empty"></button>
+                            <button type="button" class="cell" data-index="5" aria-label="Row 2, column 3, empty"></button>
+                            <button type="button" class="cell" data-index="6" aria-label="Row 3, column 1, empty"></button>
+                            <button type="button" class="cell" data-index="7" aria-label="Row 3, column 2, empty"></button>
+                            <button type="button" class="cell" data-index="8" aria-label="Row 3, column 3, empty"></button>
                         </div>
                         <button id="restart-btn" class="btn btn-danger mt-4">Restart Game</button>
                         <button id="end-game-btn" class="btn btn-secondary mt-4 ml-2">End Game</button>
@@ -262,10 +281,10 @@
         <div class="container">
             <p>I fix things now and then, more often tweak HTML and make scripts to do things - Dennis MacAlistair Ritchie</p>
             <div class="social-links">
-                <a href="https://github.com/Mr-SKR" class="github" target="_blank"><i class="bx bxl-github"></i></a>
-                <a href="https://www.linkedin.com/in/suresh-kumar-reddy/" class="linkedin" target="_blank"><i
+                <a href="https://github.com/Mr-SKR" class="github" aria-label="GitHub" target="_blank" rel="noopener"><i class="bx bxl-github" aria-hidden="true"></i></a>
+                <a href="https://www.linkedin.com/in/suresh-kumar-reddy/" class="linkedin" aria-label="LinkedIn" target="_blank" rel="noopener"><i
                         class="bx bxl-linkedin"></i></a>
-                <a href="https://www.instagram.com/suresh.kumar.reddy/" class="instagram" target="_blank"><i
+                <a href="https://www.instagram.com/suresh.kumar.reddy/" class="instagram" aria-label="Instagram" target="_blank" rel="noopener"><i
                         class="bx bxl-instagram"></i></a>
             </div>
             <div class="credits"></div>
@@ -291,7 +310,7 @@
         </div>
     </div>
 
-    <a href="#" class="back-to-top"><i class="bx bx-up-arrow-alt"></i></a>
+    <a href="#" class="back-to-top" aria-label="Back to top"><i class="bx bx-up-arrow-alt" aria-hidden="true"></i></a>
     <div id="preloader"></div>
 
     <!-- Vendor JS Files -->

@@ -19,12 +19,16 @@
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#0563bb" />
 
-  <!-- Google Fonts: only the weights the stylesheet actually uses, swap so text paints immediately -->
+  <!-- Google Fonts. Only the 8 variants actually rendered anywhere on the site
+     (measured, not guessed): Open Sans 400/700/400i, Poppins 400/600,
+     Raleway 500/600/700. Loaded off the critical path via media="print" --
+     display=swap already means text paints in the fallback first, so there is
+     nothing to gain from blocking render on the third-party round trip. -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link
-    href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,400;0,600;0,700;1,400&family=Poppins:ital,wght@0,400;0,600;0,700;1,400&family=Raleway:ital,wght@0,400;0,600;0,700;1,400&display=swap"
-    rel="stylesheet" />
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,400;0,700;1,400&family=Poppins:wght@400;600&family=Raleway:wght@500;600;700&display=swap" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,400;0,700;1,400&family=Poppins:wght@400;600&family=Raleway:wght@500;600;700&display=swap" media="print" onload="this.media='all'" />
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,400;0,700;1,400&family=Poppins:wght@400;600&family=Raleway:wght@500;600;700&display=swap" /></noscript>
 
   <!-- Vendor CSS Files -->
   <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet" />
@@ -37,7 +41,7 @@
 
 <body>
   <!-- ======= Mobile nav toggle button ======= -->
-  <button type="button" class="mobile-nav-toggle d-xl-none">
+  <button type="button" class="mobile-nav-toggle d-xl-none" aria-label="Toggle navigation" aria-expanded="false" aria-controls="header">
     <i class="bx bx-menu" aria-hidden="true"></i>
   </button>
 
@@ -46,22 +50,22 @@
     <nav class="nav-menu" aria-label="Main navigation">
       <ul>
         <li>
-          <a href="index.html"><i class="bx bx-home"></i> <span>Home</span></a>
+          <a href="index.html"><i class="bx bx-home" aria-hidden="true"></i> <span>Home</span></a>
         </li>
         <li>
-          <a href="index.html#about"><i class="bx bx-user"></i> <span>About</span></a>
+          <a href="index.html#about"><i class="bx bx-user" aria-hidden="true"></i> <span>About</span></a>
         </li>
         <li>
-          <a href="index.html#skills"><i class="bx bx-book-content"></i> <span>Skills</span></a>
+          <a href="index.html#skills"><i class="bx bx-book-content" aria-hidden="true"></i> <span>Skills</span></a>
         </li>
         <li>
-          <a href="index.html#resume"><i class="bx bx-file-blank"></i> <span>Resume</span></a>
+          <a href="index.html#resume"><i class="bx bx-file-blank" aria-hidden="true"></i> <span>Resume</span></a>
         </li>
         <li>
-          <a href="tools.html"><i class="bx bx-wrench"></i> <span>Tools</span></a>
+          <a href="tools.html"><i class="bx bx-wrench" aria-hidden="true"></i> <span>Tools</span></a>
         </li>
         <li>
-          <a href="games.html"><i class="bx bx-joystick"></i> <span>Games</span></a>
+          <a href="games.html"><i class="bx bx-joystick" aria-hidden="true"></i> <span>Games</span></a>
         </li>
       </ul>
     </nav>
@@ -91,10 +95,10 @@
     <div class="container">
       <p>I fix things now and then, more often tweak HTML and make scripts to do things - Dennis MacAlistair Ritchie</p>
       <div class="social-links">
-        <a href="https://github.com/Mr-SKR" class="github" target="_blank"><i class="bx bxl-github"></i></a>
-        <a href="https://www.linkedin.com/in/suresh-kumar-reddy/" class="linkedin" target="_blank"><i
+        <a href="https://github.com/Mr-SKR" class="github" aria-label="GitHub" target="_blank" rel="noopener"><i class="bx bxl-github" aria-hidden="true"></i></a>
+        <a href="https://www.linkedin.com/in/suresh-kumar-reddy/" class="linkedin" aria-label="LinkedIn" target="_blank" rel="noopener"><i
             class="bx bxl-linkedin"></i></a>
-        <a href="https://www.instagram.com/suresh.kumar.reddy/" class="instagram" target="_blank"><i
+        <a href="https://www.instagram.com/suresh.kumar.reddy/" class="instagram" aria-label="Instagram" target="_blank" rel="noopener"><i
             class="bx bxl-instagram"></i></a>
       </div>
       <div class="credits"></div>

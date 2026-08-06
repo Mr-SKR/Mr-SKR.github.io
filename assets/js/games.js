@@ -1007,12 +1007,22 @@ class TicTacToe {
         this.dom.targetScore.innerText = this.targetWins;
     }
 
+    // The visible glyph is the only thing that says what is in a square, so the
+    // accessible name has to carry the same information for anyone who cannot
+    // see it, and be refreshed every time the square changes.
+    labelCell(cell, index, symbol) {
+        const where = `Row ${Math.floor(index / 3) + 1}, column ${(index % 3) + 1}`;
+        cell.setAttribute('aria-label', symbol ? `${where}, ${symbol}` : `${where}, empty`);
+        cell.setAttribute('aria-disabled', symbol ? 'true' : 'false');
+    }
+
     renderBoard() {
         this.dom.cells.forEach((cell, index) => {
             cell.innerText = this.board[index];
             cell.className = 'cell';
             const symbol = this.board[index];
             if (symbol) cell.classList.add(symbol.toLowerCase(), 'taken');
+            this.labelCell(cell, index, symbol);
         });
     }
 
@@ -1021,6 +1031,7 @@ class TicTacToe {
         if (!cell) return;
         cell.innerText = symbol;
         cell.classList.add(symbol.toLowerCase(), 'taken');
+        this.labelCell(cell, index, symbol);
     }
 
     handleCellClick(index) {

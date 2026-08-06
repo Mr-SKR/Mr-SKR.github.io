@@ -1,14 +1,17 @@
 // One cache for both precached and runtime-fetched entries. Using two caches
 // would let the precached copy permanently shadow the revalidated one, since
 // caches.match() searches caches in creation order.
-const VERSION = "v6";
+const VERSION = "v8";
 const CACHE = `site-${VERSION}`;
 
 // App shell. Everything else (images, fonts) is cached at runtime on first use.
+// jsrsasign is deliberately absent: tools.js fetches it on demand, and
+// precaching 341 KB up front would hand back everything that buys.
 const PRECACHE_URLS = [
   "index.html",
   "tools.html",
   "games.html",
+  "404.html",
   "manifest.json",
   "assets/img/favicon.png",
   "assets/img/icon-512.png",
@@ -19,9 +22,7 @@ const PRECACHE_URLS = [
   "assets/js/games.js",
   "assets/js/peerjs.min.js",
   "assets/js/jwt-decode.min.js",
-  "assets/js/diff.min.js",
   "assets/js/crypto-js.min.js",
-  "assets/js/jsrsasign-all-min.js",
   "assets/js/js-yaml.min.js",
   "assets/vendor/bootstrap/css/bootstrap.min.css",
   "assets/vendor/boxicons/css/boxicons.min.css",
@@ -78,7 +79,36 @@ async function networkFirst(request) {
   } catch (err) {
     const cache = await caches.open(CACHE);
     const cached = await cache.match(request);
-    return cached || cache.match("index.html");
+    if (cached) return cached;
+
+    if (request.mode === "navigate") {
+      // "/" and "/index.html" are the same document to the server but different
+      // keys in the cache, and only the latter was precached.
+      const path = new URL(request.url).pathname;
+      if (path === "/" || path.endsWith("/")) {
+        const home = await cache.match("index.html");
+        if (home) return home;
+      }
+
+      // Genuinely unknown URL. Handing back index.html with a 200 would claim a
+      // page exists here; serve the real 404 body with a real 404 status.
+      const notFound = await cache.match("404.html");
+      if (notFound) {
+        return new Response(await notFound.blob(), {
+          status: 404,
+          statusText: "Not Found",
+          headers: notFound.headers,
+        });
+      }
+      return cache.match("index.html");
+    }
+
+    // Not a navigation: this is a script or stylesheet we have no copy of.
+    // Falling back to index.html here would hand HTML to a <script> tag, which
+    // "loads" with a 200 and then fails as a parse error the loader cannot
+    // catch -- the caller sees a missing global instead of a failed download.
+    // A 504 lets script.onerror fire and the real message reach the user.
+    return new Response("", { status: 504, statusText: "Offline" });
   }
 }
 

@@ -51,16 +51,25 @@
           $(this).closest("li").addClass("active");
         }
 
-        if ($("body").hasClass("mobile-nav-active")) {
-          $("body").removeClass("mobile-nav-active");
-          $(".mobile-nav-toggle i").toggleClass(
-            "bx-menu bx-x"
-          );
-        }
+        setMobileNav(false);
         return false;
       }
     }
   });
+
+  // Single place that owns the open/closed state. The class, the icon and the
+  // button's aria-expanded have to move together, and three call sites each
+  // flipping them by hand is how they drift apart.
+  function setMobileNav(open) {
+    var toggle = $(".mobile-nav-toggle");
+    if ($("body").hasClass("mobile-nav-active") === open) return;
+    $("body").toggleClass("mobile-nav-active", open);
+    toggle.attr("aria-expanded", open ? "true" : "false");
+    toggle
+      .find("i")
+      .toggleClass("bx-menu", !open)
+      .toggleClass("bx-x", open);
+  }
 
   // Activate smooth scroll on page load with hash links in the url
   $(document).ready(function () {
@@ -80,49 +89,62 @@
   });
 
   $(document).on("click", ".mobile-nav-toggle", function (e) {
-    $("body").toggleClass("mobile-nav-active");
-    $(".mobile-nav-toggle i").toggleClass(
-      "bx-menu bx-x"
-    );
+    setMobileNav(!$("body").hasClass("mobile-nav-active"));
   });
 
   $(document).click(function (e) {
     var container = $(".mobile-nav-toggle");
     if (!container.is(e.target) && container.has(e.target).length === 0) {
-      if ($("body").hasClass("mobile-nav-active")) {
-        $("body").removeClass("mobile-nav-active");
-        $(".mobile-nav-toggle i").toggleClass(
-          "bx-menu bx-x"
-        );
-      }
+      setMobileNav(false);
     }
   });
 
-  // Navigation active state on scroll
-  var nav_sections = $("section");
-  var main_nav = $(".nav-menu, #mobile-nav");
-
-  $(window).on("scroll", function () {
-    var cur_pos = $(this).scrollTop() + 300;
-
-    nav_sections.each(function () {
-      var top = $(this).offset().top,
-        bottom = top + $(this).outerHeight();
-
-      if (cur_pos >= top && cur_pos <= bottom) {
-        if (cur_pos <= bottom) {
-          main_nav.find("li").removeClass("active");
-        }
-        main_nav
-          .find('a[href="#' + $(this).attr("id") + '"]')
-          .parent("li")
-          .addClass("active");
-      }
-      if (cur_pos < 200) {
-        $(".nav-menu ul:first li:first").addClass("active");
-      }
-    });
+  // Escape closes the menu and hands focus back to the control that opened it,
+  // so a keyboard user is not left stranded inside a panel they cannot dismiss.
+  $(document).on("keydown", function (e) {
+    if (e.key === "Escape" && $("body").hasClass("mobile-nav-active")) {
+      setMobileNav(false);
+      $(".mobile-nav-toggle").focus();
+    }
   });
+
+  // Navigation active state on scroll.
+  //
+  // Only the sections this page's nav actually points at with an in-page anchor
+  // take part. The standalone Tools/Games/404 pages link to other documents
+  // instead, so without this filter their single section would match on every
+  // scroll, strip the active class the markup sets, and find no '#id' link to
+  // put it back: one scroll event and the highlight was gone for good.
+  var main_nav = $(".nav-menu, #mobile-nav");
+  var nav_sections = $("section").filter(function () {
+    return (
+      this.id && main_nav.find('a[href="#' + this.id + '"]').length > 0
+    );
+  });
+
+  if (nav_sections.length) {
+    $(window).on("scroll", function () {
+      var cur_pos = $(this).scrollTop() + 300;
+
+      nav_sections.each(function () {
+        var top = $(this).offset().top,
+          bottom = top + $(this).outerHeight();
+
+        if (cur_pos >= top && cur_pos <= bottom) {
+          if (cur_pos <= bottom) {
+            main_nav.find("li").removeClass("active");
+          }
+          main_nav
+            .find('a[href="#' + $(this).attr("id") + '"]')
+            .parent("li")
+            .addClass("active");
+        }
+        if (cur_pos < 200) {
+          $(".nav-menu ul:first li:first").addClass("active");
+        }
+      });
+    });
+  }
 
   // Back to top button
   $(window).scroll(function () {

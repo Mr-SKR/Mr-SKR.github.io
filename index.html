@@ -118,12 +118,16 @@
   <!-- LCP hero background -->
   <link rel="preload" as="image" href="assets/img/hero-bg.webp" />
 
-  <!-- Google Fonts: only the weights the stylesheet actually uses, swap so text paints immediately -->
+  <!-- Google Fonts. Only the 8 variants actually rendered anywhere on the site
+     (measured, not guessed): Open Sans 400/700/400i, Poppins 400/600,
+     Raleway 500/600/700. Loaded off the critical path via media="print" --
+     display=swap already means text paints in the fallback first, so there is
+     nothing to gain from blocking render on the third-party round trip. -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link
-    href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,400;0,600;0,700;1,400&family=Poppins:ital,wght@0,400;0,600;0,700;1,400&family=Raleway:ital,wght@0,400;0,600;0,700;1,400&display=swap"
-    rel="stylesheet" />
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,400;0,700;1,400&family=Poppins:wght@400;600&family=Raleway:wght@500;600;700&display=swap" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,400;0,700;1,400&family=Poppins:wght@400;600&family=Raleway:wght@500;600;700&display=swap" media="print" onload="this.media='all'" />
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,400;0,700;1,400&family=Poppins:wght@400;600&family=Raleway:wght@500;600;700&display=swap" /></noscript>
 
   <!-- Vendor CSS Files -->
   <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet" />
@@ -136,7 +140,7 @@
 
 <body>
   <!-- ======= Mobile nav toggle button ======= -->
-  <button type="button" class="mobile-nav-toggle d-xl-none">
+  <button type="button" class="mobile-nav-toggle d-xl-none" aria-label="Toggle navigation" aria-expanded="false" aria-controls="header">
     <i class="bx bx-menu" aria-hidden="true"></i>
   </button>
 
@@ -145,22 +149,22 @@
     <nav class="nav-menu" aria-label="Main navigation">
       <ul>
         <li class="active">
-          <a href="#hero"><i class="bx bx-home"></i> <span>Home</span></a>
+          <a href="#hero"><i class="bx bx-home" aria-hidden="true"></i> <span>Home</span></a>
         </li>
         <li>
-          <a href="#about"><i class="bx bx-user"></i> <span>About</span></a>
+          <a href="#about"><i class="bx bx-user" aria-hidden="true"></i> <span>About</span></a>
         </li>
         <li>
-          <a href="#skills"><i class="bx bx-book-content"></i> <span>Skills</span></a>
+          <a href="#skills"><i class="bx bx-book-content" aria-hidden="true"></i> <span>Skills</span></a>
         </li>
         <li>
-          <a href="#resume"><i class="bx bx-file-blank"></i> <span>Resume</span></a>
+          <a href="#resume"><i class="bx bx-file-blank" aria-hidden="true"></i> <span>Resume</span></a>
         </li>
         <li>
-          <a href="tools.html"><i class="bx bx-wrench"></i> <span>Tools</span></a>
+          <a href="tools.html"><i class="bx bx-wrench" aria-hidden="true"></i> <span>Tools</span></a>
         </li>
         <li>
-          <a href="games.html"><i class="bx bx-joystick"></i> <span>Games</span></a>
+          <a href="games.html"><i class="bx bx-joystick" aria-hidden="true"></i> <span>Games</span></a>
         </li>
       </ul>
     </nav>
@@ -177,10 +181,10 @@
           data-typed-items="a Full Stack developer, an AWS Certified Professional, a part time traveller"></span>
       </p>
       <div class="social-links">
-        <a href="https://github.com/Mr-SKR" class="github" target="_blank"><i class="bx bxl-github"></i></a>
-        <a href="https://www.linkedin.com/in/suresh-kumar-reddy/" class="linkedin" target="_blank"><i
+        <a href="https://github.com/Mr-SKR" class="github" aria-label="GitHub" target="_blank" rel="noopener"><i class="bx bxl-github" aria-hidden="true"></i></a>
+        <a href="https://www.linkedin.com/in/suresh-kumar-reddy/" class="linkedin" aria-label="LinkedIn" target="_blank" rel="noopener"><i
             class="bx bxl-linkedin"></i></a>
-        <a href="https://www.instagram.com/suresh.kumar.reddy/" class="instagram" target="_blank"><i
+        <a href="https://www.instagram.com/suresh.kumar.reddy/" class="instagram" aria-label="Instagram" target="_blank" rel="noopener"><i
             class="bx bxl-instagram"></i></a>
       </div>
     </div>
@@ -219,16 +223,16 @@
               <div class="col-lg-6">
                 <ul>
                   <li>
-                    <i class="bx bx-chevron-right"></i>
+                    <i class="bx bx-chevron-right" aria-hidden="true"></i>
                     <strong>Website:</strong>
                     <a href="https://sureshreddy.xyz"> sureshreddy.xyz</a>
                   </li>
                   <li>
-                    <i class="bx bx-chevron-right"></i>
+                    <i class="bx bx-chevron-right" aria-hidden="true"></i>
                     <strong>City:</strong> Bengaluru, India
                   </li>
                   <li>
-                    <i class="bx bx-chevron-right"></i>
+                    <i class="bx bx-chevron-right" aria-hidden="true"></i>
                     <strong>Degree:</strong> Bachelor's in Engineering (ISE)
                   </li>
                 </ul>
@@ -236,12 +240,12 @@
               <div class="col-lg-6">
                 <ul>
                   <li>
-                    <i class="bx bx-chevron-right"></i>
+                    <i class="bx bx-chevron-right" aria-hidden="true"></i>
                     <strong>Phone:</strong>
                     <a href="tel:+91 7483006036"> +91 7483006036</a>
                   </li>
                   <li>
-                    <i class="bx bx-chevron-right"></i>
+                    <i class="bx bx-chevron-right" aria-hidden="true"></i>
                     <strong>Email:</strong><a href="mailto:sureshreddy@engineer.com">
                       sureshreddy@engineer.com</a>
                   </li>
@@ -252,19 +256,21 @@
           <div class="row align-items-center skills-content mt-5">
 
             <div class="col logo mx-lg-5" data-aos="zoom-in" data-aos-delay="200">
-              <a href="https://www.credly.com/badges/f9fbf709-4ffb-43b3-a070-50db85789cf7/public_url" target="_blank">
+              <a href="https://www.credly.com/badges/f9fbf709-4ffb-43b3-a070-50db85789cf7/public_url" target="_blank" rel="noopener">
                 <img src="assets/img/certs/AWS-Architect-Professional.webp"
-                  alt="AWS Certified Architect – Professional badge" class="img-circle" style="width: 100%"
+                  alt="AWS Certified Architect – Professional badge" style="width: 100%"
                   loading="lazy" />
               </a>
             </div>
-            <div class="col logo mx-lg-5" data-aos="zoom-in" data-aos-delay="200">
-            </div>
+            <!-- Spacer: keeps the two Professional badges on the same grid
+                 columns as the three Associate badges below. Empty by design,
+                 so it carries no animation and nothing to announce. -->
+            <div class="col logo mx-lg-5" aria-hidden="true"></div>
             <div class="col logo mx-lg-5" data-aos="zoom-in" data-aos-delay="200">
               <a href="https://www.youracclaim.com/badges/b119ea5a-0165-4597-8738-6dfabe4ebb0e/public_url"
-                target="_blank">
+                target="_blank" rel="noopener">
                 <img src="assets/img/certs/AWS-DevOpsEngineer-Professional.webp"
-                  alt="AWS Certified DevOps Engineer – Professional badge" class="img-circle" style="width: 100%"
+                  alt="AWS Certified DevOps Engineer – Professional badge" style="width: 100%"
                   loading="lazy" />
               </a>
             </div>
@@ -273,23 +279,23 @@
           <div class="row align-items-center skills-content mt-5">
             <div class="col logo mx-lg-5" data-aos="zoom-in" data-aos-delay="200">
               <a href="https://www.youracclaim.com/badges/531fa23b-f013-4b36-89ff-e7fec1eee2c5/public_url"
-                target="_blank">
+                target="_blank" rel="noopener">
                 <img src="assets/img/certs/AWS-Developer-Associate.webp" alt="AWS Certified Developer – Associate badge"
-                  class="img-circle" style="width: 100%" loading="lazy" />
+                  style="width: 100%" loading="lazy" />
               </a>
             </div>
             <div class="col logo mx-lg-5" data-aos="zoom-in" data-aos-delay="200">
               <a href="https://www.youracclaim.com/badges/416a7e69-cc65-46aa-8a95-0d5db1976187/public_url"
-                target="_blank">
+                target="_blank" rel="noopener">
                 <img src="assets/img/certs/AWS-SolArchitect-Associate.webp"
-                  alt="AWS Certified Solutions Architect – Associate badge" class="img-circle" style="width: 100%"
+                  alt="AWS Certified Solutions Architect – Associate badge" style="width: 100%"
                   loading="lazy" />
               </a>
             </div>
             <div class="col logo mx-lg-5" data-aos="zoom-in" data-aos-delay="200">
-              <a href="https://www.credly.com/badges/84afe5a3-d00f-4e5e-a414-8701d4b13431/public_url" target="_blank">
+              <a href="https://www.credly.com/badges/84afe5a3-d00f-4e5e-a414-8701d4b13431/public_url" target="_blank" rel="noopener">
                 <img src="assets/img/certs/AWS-SysOpAdmin-Associate-2020.webp"
-                  alt="AWS Certified SysOps Administrator – Associate badge" class="img-circle" style="width: 100%"
+                  alt="AWS Certified SysOps Administrator – Associate badge" style="width: 100%"
                   loading="lazy" />
               </a>
             </div>
@@ -312,20 +318,20 @@
 
         <div class="row align-items-center skills-content my-5">
           <div class="col logo mx-lg-5" data-aos="zoom-in" data-aos-delay="200">
-            <a href="https://reactjs.org/" target="_blank">
-              <img src="assets/img/skills/react-logo.webp" alt="React logo" class="img-circle" style="width: 100%"
+            <a href="https://reactjs.org/" target="_blank" rel="noopener">
+              <img src="assets/img/skills/react-logo.webp" alt="React logo" style="width: 100%"
                 loading="lazy" />
             </a>
           </div>
-          <div class="col logo mx-lg-5 center" data-aos="zoom-in" data-aos-delay="200">
-            <a href="https://www.typescriptlang.org/" target="_blank">
-              <img src="assets/img/skills/typescript-logo.webp" alt="TypeScript logo" class="img-circle"
+          <div class="col logo mx-lg-5" data-aos="zoom-in" data-aos-delay="200">
+            <a href="https://www.typescriptlang.org/" target="_blank" rel="noopener">
+              <img src="assets/img/skills/typescript-logo.webp" alt="TypeScript logo"
                 style="width: 30%" loading="lazy" />
             </a>
           </div>
           <div class="col logo mx-lg-5" data-aos="zoom-in" data-aos-delay="200">
-            <a href="https://nodejs.org/en/" target="_blank">
-              <img src="assets/img/skills/node-js-logo.webp" alt="NodeJS logo" class="img-circle" style="width: 100%"
+            <a href="https://nodejs.org/en/" target="_blank" rel="noopener">
+              <img src="assets/img/skills/node-js-logo.webp" alt="NodeJS logo" style="width: 100%"
                 loading="lazy" />
             </a>
           </div>
@@ -333,41 +339,20 @@
 
         <div class="row align-items-center skills-content mb-5">
           <div class="col logo mx-lg-5" data-aos="zoom-in" data-aos-delay="200">
-            <a href="https://www.java.com/en/" target="_blank">
-              <img src="assets/img/skills/java-logo.webp" alt="Java logo" class="img-circle" style="width: 60%"
+            <a href="https://www.java.com/en/" target="_blank" rel="noopener">
+              <img src="assets/img/skills/java-logo.webp" alt="Java logo" style="width: 60%"
                 loading="lazy" />
             </a>
           </div>
           <div class="col logo mx-lg-5" data-aos="zoom-in" data-aos-delay="200">
-            <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript" target="_blank">
-              <img src="assets/img/skills/js-logo.webp" alt="JavaScript logo" class="img-circle" style="width: 50%"
+            <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript" target="_blank" rel="noopener">
+              <img src="assets/img/skills/js-logo.webp" alt="JavaScript logo" style="width: 50%"
                 loading="lazy" />
             </a>
           </div>
           <div class="col logo mx-lg-5" data-aos="zoom-in" data-aos-delay="200">
-            <a href="https://www.python.org/" target="_blank">
-              <img src="assets/img/skills/python-logo.webp" alt="Python logo" class="img-circle" style="width: 100%"
-                loading="lazy" />
-            </a>
-          </div>
-        </div>
-
-        <div class="row align-items-center skills-content mt-5">
-          <div class="col logo mx-lg-5" data-aos="zoom-in" data-aos-delay="200">
-            <a href="https://www.mysql.com/" target="_blank">
-              <img src="assets/img/skills/mysql-logo.webp" alt="MySQL logo" class="img-circle" style="width: 50%"
-                loading="lazy" />
-            </a>
-          </div>
-          <div class="col logo mx-lg-5" data-aos="zoom-in" data-aos-delay="200">
-            <a href="https://cassandra.apache.org/_/index.html" target="_blank">
-              <img src="assets/img/skills/cassandra-logo.webp" alt="Cassandra logo" class="img-circle" style="width: 50%"
-                loading="lazy" />
-            </a>
-          </div>
-          <div class="col logo mx-lg-5" data-aos="zoom-in" data-aos-delay="200">
-            <a href="https://www.mongodb.com/" target="_blank">
-              <img src="assets/img/skills/mongodb-logo.webp" alt="MongoDB logo" class="img-circle" style="width: 100%"
+            <a href="https://www.python.org/" target="_blank" rel="noopener">
+              <img src="assets/img/skills/python-logo.webp" alt="Python logo" style="width: 100%"
                 loading="lazy" />
             </a>
           </div>
@@ -375,20 +360,41 @@
 
         <div class="row align-items-center skills-content mt-5">
           <div class="col logo mx-lg-5" data-aos="zoom-in" data-aos-delay="200">
-            <a href="https://aws.amazon.com/" target="_blank">
-              <img src="assets/img/skills/aws-logo.webp" alt="AWS" class="img-circle" style="width: 100%"
+            <a href="https://www.mysql.com/" target="_blank" rel="noopener">
+              <img src="assets/img/skills/mysql-logo.webp" alt="MySQL logo" style="width: 50%"
                 loading="lazy" />
             </a>
           </div>
           <div class="col logo mx-lg-5" data-aos="zoom-in" data-aos-delay="200">
-            <a href="https://www.docker.com/" target="_blank">
-              <img src="assets/img/skills/docker-logo.webp" alt="Docker" class="img-circle" style="width: 100%"
+            <a href="https://cassandra.apache.org/_/index.html" target="_blank" rel="noopener">
+              <img src="assets/img/skills/cassandra-logo.webp" alt="Cassandra logo" style="width: 50%"
                 loading="lazy" />
             </a>
           </div>
           <div class="col logo mx-lg-5" data-aos="zoom-in" data-aos-delay="200">
-            <a href="https://kubernetes.io/" target="_blank">
-              <img src="assets/img/skills/k8s-logo.webp" alt="Kubernetes" class="img-circle" style="width: 100%"
+            <a href="https://www.mongodb.com/" target="_blank" rel="noopener">
+              <img src="assets/img/skills/mongodb-logo.webp" alt="MongoDB logo" style="width: 100%"
+                loading="lazy" />
+            </a>
+          </div>
+        </div>
+
+        <div class="row align-items-center skills-content mt-5">
+          <div class="col logo mx-lg-5" data-aos="zoom-in" data-aos-delay="200">
+            <a href="https://aws.amazon.com/" target="_blank" rel="noopener">
+              <img src="assets/img/skills/aws-logo.webp" alt="AWS" style="width: 100%"
+                loading="lazy" />
+            </a>
+          </div>
+          <div class="col logo mx-lg-5" data-aos="zoom-in" data-aos-delay="200">
+            <a href="https://www.docker.com/" target="_blank" rel="noopener">
+              <img src="assets/img/skills/docker-logo.webp" alt="Docker" style="width: 100%"
+                loading="lazy" />
+            </a>
+          </div>
+          <div class="col logo mx-lg-5" data-aos="zoom-in" data-aos-delay="200">
+            <a href="https://kubernetes.io/" target="_blank" rel="noopener">
+              <img src="assets/img/skills/k8s-logo.webp" alt="Kubernetes" style="width: 100%"
                 loading="lazy" />
             </a>
           </div>
@@ -411,10 +417,10 @@
             <div class="resume-item">
               <h4>
                 Staff Software Engineer @
-                <a href="https://www.pingidentity.com/" target="_blank">Ping Identity</a>
+                <a href="https://www.pingidentity.com/" target="_blank" rel="noopener">Ping Identity</a>
               </h4>
               <h5>January, 2023 - Present</h5>
-              <p><a href="https://share.google/fDvFQiXjzveIHIV4h" target="_blank"><i class="bx bx-map"></i><em> Global
+              <p><a href="https://share.google/fDvFQiXjzveIHIV4h" target="_blank" rel="noopener"><i class="bx bx-map" aria-hidden="true"></i><em> Global
                     Technology Park, Bengaluru, India </em></a></p>
               <ul>
                 <li>
@@ -449,10 +455,10 @@
             <div class="resume-item">
               <h4>
                 Software Engineer III @
-                <a href="https://www.cerner.com/" target="_blank">Oracle Cerner</a>
+                <a href="https://www.cerner.com/" target="_blank" rel="noopener">Oracle Cerner</a>
               </h4>
               <h5>November, 2021 - December, 2022</h5>
-              <p><a href="https://maps.app.goo.gl/fLpfqt8tqZ82mrbq9" target="_blank"><i class="bx bx-map"></i><em>
+              <p><a href="https://maps.app.goo.gl/fLpfqt8tqZ82mrbq9" target="_blank" rel="noopener"><i class="bx bx-map" aria-hidden="true"></i><em>
                     Manyata Tech Park, Bengaluru, India </em></a></p>
               <ul>
                 <li>
@@ -484,7 +490,7 @@
                 <a href="https://www.thomsonreuters.com/">Thomson Reuters</a>
               </h4>
               <h5>June, 2018 - October, 2021</h5>
-              <p><a href="https://share.google/xwMdgCmXUxKQlMftA" target="_blank"><i class="bx bx-map"></i><em>
+              <p><a href="https://share.google/xwMdgCmXUxKQlMftA" target="_blank" rel="noopener"><i class="bx bx-map" aria-hidden="true"></i><em>
                     DivyaSree Technopolis, Bengaluru, India </em></a></p>
               <ul>
                 <li>
@@ -533,7 +539,7 @@
                 Intern @ <a href="https://www.ellucian.com/">Ellucian</a>
               </h4>
               <h5>January - April, 2018</h5>
-              <p><a href="https://share.google/7B8jEVH1zThrIkxmU" target="_blank"><i class="bx bx-map"></i><em> RMZ
+              <p><a href="https://share.google/7B8jEVH1zThrIkxmU" target="_blank" rel="noopener"><i class="bx bx-map" aria-hidden="true"></i><em> RMZ
                     Ecoworld, Bengaluru, India </em></a></p>
               <ul>
                 <li>
@@ -554,15 +560,15 @@
               <h4>Food Lovers Database (FLDb)</h4>
               <h5>Restaurant finder web application</h5>
               <p>
-                <em><a href="https://foodloversdatabase.com" target="_blank">
-                    <i class="bx bx-world"></i>
+                <em><a href="https://foodloversdatabase.com" target="_blank" rel="noopener">
+                    <i class="bx bx-world" aria-hidden="true"></i>
                     https://foodloversdatabase.com</a></em>
               </p>
               <ul>
                 <li>
                   Food Lovers Database (FLDb) is a collection of food Vlogs
                   from
-                  <a href="https://www.youtube.com/channel/UC-Lq6oBPTgTXT_K-ylWL6hg" target="_blank">Food Lovers TV</a>
+                  <a href="https://www.youtube.com/channel/UC-Lq6oBPTgTXT_K-ylWL6hg" target="_blank" rel="noopener">Food Lovers TV</a>
                   built using the MERN stack (MongoDB, ExpressJS, React and
                   NodeJS) with usage of technologies such as TypeScript and
                   NextJS
@@ -602,8 +608,8 @@
               <h4>Bachelor's in Information Science Engineering</h4>
               <h5>2014 - 2018</h5>
               <p>
-                <em><a href="https://www.cmrit.ac.in/" target="_blank">
-                    <i class="bx bx-world"></i>
+                <em><a href="https://www.cmrit.ac.in/" target="_blank" rel="noopener">
+                    <i class="bx bx-world" aria-hidden="true"></i>
                     CMR Institute of Technology, Bengaluru, IND </a></em>
               </p>
               <p>
@@ -617,8 +623,8 @@
               <h4>Pre - University College</h4>
               <h5>2012 - 2014</h5>
               <p>
-                <em><a href="http://sjpuc.in/" target="_blank">
-                    <i class="bx bx-world"></i>
+                <em><a href="http://sjpuc.in/" target="_blank" rel="noopener">
+                    <i class="bx bx-world" aria-hidden="true"></i>
                     St. Joseph's Pre - University college, Bengaluru,IND </a></em>
               </p>
               <p>
@@ -646,10 +652,10 @@
     <div class="container">
       <p>I fix things now and then, more often tweak HTML and make scripts to do things - Dennis MacAlistair Ritchie</p>
       <div class="social-links">
-        <a href="https://github.com/Mr-SKR" class="github" target="_blank"><i class="bx bxl-github"></i></a>
-        <a href="https://www.linkedin.com/in/suresh-kumar-reddy/" class="linkedin" target="_blank"><i
+        <a href="https://github.com/Mr-SKR" class="github" aria-label="GitHub" target="_blank" rel="noopener"><i class="bx bxl-github" aria-hidden="true"></i></a>
+        <a href="https://www.linkedin.com/in/suresh-kumar-reddy/" class="linkedin" aria-label="LinkedIn" target="_blank" rel="noopener"><i
             class="bx bxl-linkedin"></i></a>
-        <a href="https://www.instagram.com/suresh.kumar.reddy/" class="instagram" target="_blank"><i
+        <a href="https://www.instagram.com/suresh.kumar.reddy/" class="instagram" aria-label="Instagram" target="_blank" rel="noopener"><i
             class="bx bxl-instagram"></i></a>
       </div>
       <div class="credits"></div>
@@ -657,7 +663,7 @@
   </footer>
   <!-- End Footer -->
 
-  <a href="#" class="back-to-top"><i class="bx bx-up-arrow-alt"></i></a>
+  <a href="#" class="back-to-top" aria-label="Back to top"><i class="bx bx-up-arrow-alt" aria-hidden="true"></i></a>
   <div id="preloader"></div>
 
   <!-- Vendor JS Files -->
