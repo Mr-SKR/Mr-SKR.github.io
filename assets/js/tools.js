@@ -1173,27 +1173,82 @@
     update();
   }
 
-  // Expose functions to global scope for HTML event handlers
-  global.formatJSON = formatJSON;
-  global.handleJsonUpload = handleJsonUpload;
-  global.copyToClipboard = copyToClipboard;
-  global.checkInput = checkInput;
-  global.downloadJsonOutput = downloadJsonOutput;
-  global.handleFileUpload = handleFileUpload;
-  global.compareJSON = compareJSON;
-  global.setDiffView = setDiffView;
-  global.navigateDiff = navigateDiff;
-  global.decodeJWT = decodeJWT;
-  global.updateJwtHeader = updateJwtHeader;
-  global.encodeJWT = encodeJWT;
-  global.base64Encode = base64Encode;
-  global.base64Decode = base64Decode;
-  global.urlEncode = urlEncode;
-  global.urlDecode = urlDecode;
-  global.handleYamlJsonUpload = handleYamlJsonUpload;
-  global.yamlToJson = yamlToJson;
-  global.jsonToYaml = jsonToYaml;
-  global.downloadYamlJsonOutput = downloadYamlJsonOutput;
+  // --- Event wiring ---
+  //
+  // The markup used to call these directly through inline onclick/oninput/
+  // onchange attributes, which forced script-src to allow 'unsafe-inline' --
+  // on a page where people paste private keys, that is the one concession
+  // worth not making. Elements now name an action, and dispatch happens here
+  // against these tables. Nothing resolves through the global object, so a
+  // stray or injected data-action can only ever reach a listed entry.
+  //
+  // Each handler receives (element, args), where args is the comma-separated
+  // data-args list. Wrapping rather than referencing the functions directly
+  // keeps the tables honest about argument order, which differs between them:
+  // copyToClipboard takes the id first, handleFileUpload takes the element.
+
+  const CLICK_ACTIONS = {
+    format: () => formatJSON(),
+    compare: () => compareJSON(),
+    decodeJwt: () => decodeJWT(),
+    encodeJwt: () => encodeJWT(),
+    base64Encode: () => base64Encode(),
+    base64Decode: () => base64Decode(),
+    urlEncode: () => urlEncode(),
+    urlDecode: () => urlDecode(),
+    yamlToJson: () => yamlToJson(),
+    jsonToYaml: () => jsonToYaml(),
+    downloadJson: () => downloadJsonOutput(),
+    downloadYamlJson: () => downloadYamlJsonOutput(),
+    copy: (el, args) => copyToClipboard(args[0], el),
+    diffView: (el, args) => setDiffView(args[0]),
+    diffNav: (el, args) => navigateDiff(Number(args[0])),
+    // The real <input type="file"> is visually hidden; a styled button stands
+    // in for it and forwards the click.
+    openFilePicker: (el, args) => {
+      const input = document.getElementById(args[0]);
+      if (input) input.click();
+    },
+  };
+
+  const INPUT_ACTIONS = {
+    checkInput: (el, args) => checkInput(args[0], args[1]),
+  };
+
+  const CHANGE_ACTIONS = {
+    jsonUpload: (el) => handleJsonUpload(el),
+    yamlJsonUpload: (el) => handleYamlJsonUpload(el),
+    fileUpload: (el, args) => handleFileUpload(el, args[0], args[1]),
+    updateJwtHeader: () => updateJwtHeader(),
+  };
+
+  function parseArgs(el) {
+    const raw = el.getAttribute("data-args");
+    return raw ? raw.split(",").map((s) => s.trim()) : [];
+  }
+
+  // input and change bubble, so all three can be delegated from the document
+  // and keep working for markup added after load.
+  function delegate(eventName, attribute, table) {
+    document.addEventListener(eventName, (event) => {
+      const el = event.target.closest("[" + attribute + "]");
+      if (!el) return;
+      const handler = table[el.getAttribute(attribute)];
+      if (!handler) return;
+      // The diff view switch is a <label> wrapping a radio, so one user click
+      // arrives twice: once for the label, once for the click the browser
+      // synthesises on the control inside it. Both bubble to the same element.
+      // Re-rendering a large diff twice is visible, so drop the second.
+      if (el.tagName === "LABEL" && event.target !== el && el.contains(event.target)) {
+        return;
+      }
+      handler(el, parseArgs(el));
+    });
+  }
+
+  delegate("click", "data-action", CLICK_ACTIONS);
+  delegate("input", "data-input-action", INPUT_ACTIONS);
+  delegate("change", "data-change-action", CHANGE_ACTIONS);
 
   // Initialize line numbers
   document.addEventListener('DOMContentLoaded', () => {

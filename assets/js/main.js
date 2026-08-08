@@ -187,21 +187,10 @@
     $(window).on("load", initAos);
   }
 
-  // Failsafe: if AOS never initialised (script blocked, error earlier in this
-  // file, cached/version mismatch), strip the attributes so the content is
-  // simply shown without animation rather than staying invisible.
-  setTimeout(function () {
-    if (document.querySelector("[data-aos].aos-init")) return;
-    var hidden = document.querySelectorAll("[data-aos]");
-    if (!hidden.length) return;
-    console.warn(
-      "AOS did not initialise; revealing " + hidden.length + " elements without animation."
-    );
-    Array.prototype.forEach.call(hidden, function (el) {
-      el.removeAttribute("data-aos");
-      el.removeAttribute("data-aos-delay");
-    });
-  }, 4000);
+  // The failsafe that used to live here now sits in assets/js/boot.js, which
+  // runs without jQuery. Keeping it in this file meant it shared a fate with
+  // the very thing it was meant to protect against: if jQuery is missing, the
+  // IIFE wrapping this file throws before any of it is reached.
 
   // Service worker
   if ("serviceWorker" in navigator && window.location.protocol !== "file:") {

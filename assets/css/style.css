@@ -47,6 +47,16 @@ body {
   flex-shrink: 0;
 }
 
+/* Every <img> now carries its intrinsic width/height so the browser can reserve
+   the correct box before the file arrives, instead of reflowing the page around
+   it. Most of these images are then sized in CSS (style="width: 50%" on the
+   skill and certification logos), and the height attribute would otherwise win
+   and stretch them to their full pixel height. Bootstrap gives .img-fluid this
+   for free; the logos do not use it. */
+img {
+  height: auto;
+}
+
 a {
   color: #0563bb;
 }
@@ -95,6 +105,37 @@ h6 {
 }
 
 /*--------------------------------------------------------------
+# No-JavaScript fallback
+--------------------------------------------------------------*/
+/* Two things on this page are invisible until JavaScript says otherwise, and
+   both fail closed:
+
+   - AOS ships `opacity: 0` on every [data-aos] element and only reveals them by
+     adding .aos-animate. There are 21 on the home page, which is all of About,
+     Skills and Resume plus the hero.
+   - #preloader is an opaque full-screen panel that main.js removes on load.
+
+   With scripting off, or if jQuery simply fails to arrive, the result was a
+   blank white page with a spinner painted on it. The failsafe in main.js cannot
+   help here because it is itself JavaScript. These rules run from the
+   stylesheet, so they hold in either case.
+
+   .no-js is written into the markup on <html> and removed by assets/js/boot.js
+   before paint, so it only survives when scripting is off entirely. boot.js
+   additionally covers "scripts run but jQuery never arrived", and the animation
+   on #preloader below covers boot.js itself failing. */
+.no-js [data-aos],
+.no-js [data-aos].aos-animate {
+  opacity: 1 !important;
+  transform: none !important;
+  transition: none !important;
+}
+
+.no-js #preloader {
+  display: none;
+}
+
+/*--------------------------------------------------------------
 # Preloader
 --------------------------------------------------------------*/
 #preloader {
@@ -106,6 +147,20 @@ h6 {
   z-index: 9999;
   overflow: hidden;
   background: #fff;
+  /* Last line of defence. This panel is opaque and covers the whole viewport,
+     and it used to be removed only by jQuery on window.load -- so any failure
+     to load jQuery left the site as a permanent white screen. The animation
+     needs no JavaScript at all: after 8s it takes itself out of the way
+     whatever else has gone wrong. main.js still fades it out on load, which is
+     what normally happens, long before this fires. */
+  animation: preloader-failsafe 0.4s ease-out 8s forwards;
+}
+
+@keyframes preloader-failsafe {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
 }
 
 #preloader:before {
@@ -164,12 +219,27 @@ h6 {
   overflow-y: auto;
 }
 
-@media (max-width: 992px) {
+/* 991.98px, not 992px: `max-width: 992px` and `min-width: 992px` both match at
+   exactly 992, so a viewport of that width got the off-canvas drawer and the
+   desktop icon rail at the same time. */
+@media (max-width: 991.98px) {
   #header {
     width: 300px;
     background: #fff;
     border-right: 1px solid #e6e9ec;
     left: -300px;
+  }
+}
+
+/* The hamburger belongs to the off-canvas drawer, so it has to disappear at the
+   same width the drawer does. It used to carry Bootstrap's .d-xl-none, which
+   hides at 1200px -- 200px later than this nav switches. Between 993 and 1199px
+   both the icon rail and the hamburger were on screen, and pressing it added
+   .mobile-nav-active: that locks body scroll while #header is already at left:0,
+   so the page froze and nothing appeared to open. */
+@media (min-width: 992px) {
+  .mobile-nav-toggle {
+    display: none;
   }
 }
 
@@ -329,7 +399,9 @@ h6 {
   margin: 0;
   font-size: 64px;
   font-weight: 700;
-  line-height: 56px;
+  /* Was 56px, i.e. tighter than the type itself, which clipped descenders and
+     would have collided outright had the name ever wrapped to two lines. */
+  line-height: 1.15;
   color: #45505b;
 }
 
@@ -362,13 +434,13 @@ h6 {
   color: #0563bb;
 }
 
-@media (max-width: 992px) {
+@media (max-width: 991.98px) {
   #hero {
     text-align: center;
   }
   #hero h1 {
     font-size: 32px;
-    line-height: 36px;
+    line-height: 1.15;
   }
   #hero p {
     margin-top: 10px;
@@ -577,6 +649,16 @@ section {
   font-size: 14px;
   text-align: center;
   padding: 30px 0;
+}
+
+/* Every section gets a 100px left offset to clear the fixed nav rail, but the
+   footer did not, so its centred content sat 50px left of everything above it
+   -- a visible drift on all four pages. This has to come after the shorthand
+   above, which would otherwise reset padding-left back to 0. */
+@media (min-width: 992px) {
+  #footer {
+    padding-left: 100px;
+  }
 }
 
 #footer h3 {

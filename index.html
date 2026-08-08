@@ -1,9 +1,17 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="no-js">
 
 <head>
   <meta charset="utf-8" />
   <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+
+  <!-- Content Security Policy. GitHub Pages cannot set response headers, so this
+     goes in a meta tag; frame-ancestors is deliberately absent because it is
+     ignored there and only logs a console warning. script-src has no
+     'unsafe-inline': the only inline handler this page had was the font
+     stylesheet's onload, which went away with self-hosting. style-src still
+     needs it for the style="" attributes in the markup. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; img-src 'self' data:; font-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; form-action 'self'" />
 
   <title>Suresh Reddy - Software Engineer</title>
   <meta name="description"
@@ -14,21 +22,25 @@
   <meta property="og:title" content="Suresh Reddy Portfolio" />
   <meta property="og:description"
     content="Staff Software Engineer | Full Stack developer | IAM expert | AWS Certified Professional" />
-  <meta property="og:image" content="https://sureshreddy.xyz/assets/img/profile.webp" />
-  <meta property="og:image:width" content="799" />
-  <meta property="og:image:height" content="800" />
-  <meta property="og:image:alt" content="Suresh Reddy" />
+  <!-- A purpose-built 1200x630 card, matching the ones tools.html and games.html
+       already had. This page previously shared the square profile.webp, which
+       forced the small summary layout and is a format LinkedIn renders
+       unreliably -- the most-shared URL on the site had the weakest preview. -->
+  <meta property="og:image" content="https://sureshreddy.xyz/assets/img/og-home.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="Suresh Reddy, Staff Software Engineer. Identity and access at scale." />
   <meta property="og:url" content="https://sureshreddy.xyz/" />
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="Suresh Reddy" />
   <meta property="og:locale" content="en_US" />
   <!-- Twitter Meta Tags -->
-  <!-- Square source image, so summary renders better than summary_large_image here. -->
-  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Suresh Reddy's Portfolio" />
   <meta name="twitter:description"
     content="Staff Software Engineer | Full Stack developer | IAM expert | AWS Certified Professional" />
-  <meta name="twitter:image" content="https://sureshreddy.xyz/assets/img/profile.webp" />
+  <meta name="twitter:image" content="https://sureshreddy.xyz/assets/img/og-home.png" />
+  <meta name="twitter:image:alt" content="Suresh Reddy, Staff Software Engineer. Identity and access at scale." />
 
   <!-- Canonical URL -->
   <link rel="canonical" href="https://sureshreddy.xyz/" />
@@ -118,16 +130,23 @@
   <!-- LCP hero background -->
   <link rel="preload" as="image" href="assets/img/hero-bg.webp" />
 
-  <!-- Google Fonts. Only the 8 variants actually rendered anywhere on the site
-     (measured, not guessed): Open Sans 400/700/400i, Poppins 400/600,
-     Raleway 500/600/700. Loaded off the critical path via media="print" --
-     display=swap already means text paints in the fallback first, so there is
-     nothing to gain from blocking render on the third-party round trip. -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,400;0,700;1,400&family=Poppins:wght@400;600&family=Raleway:wght@500;600;700&display=swap" />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,400;0,700;1,400&family=Poppins:wght@400;600&family=Raleway:wght@500;600;700&display=swap" media="print" onload="this.media='all'" />
-  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,400;0,700;1,400&family=Poppins:wght@400;600&family=Raleway:wght@500;600;700&display=swap" /></noscript>
+  <!-- Self-hosted fonts. Only the 8 variants actually rendered anywhere on the
+     site (measured, not guessed): Open Sans 400/700/400i, Poppins 400/600,
+     Raleway 500/600/700. Open Sans and Raleway are variable, so one file each
+     covers their whole weight range -- see assets/css/fonts.css.
+
+     Serving these from this origin removes a third-party DNS lookup, TLS
+     handshake and two round trips from every cold load, lets the service worker
+     cache them, and stops handing each visitor's IP to Google. The two faces
+     that paint the name and body copy above the fold are preloaded; the rest
+     are pulled in on demand by unicode-range. -->
+  <link rel="preload" as="font" type="font/woff2" href="assets/fonts/raleway-normal-500-700-latin.woff2" crossorigin />
+  <link rel="preload" as="font" type="font/woff2" href="assets/fonts/opensans-normal-400-700-latin.woff2" crossorigin />
+  <link rel="stylesheet" href="assets/css/fonts.css" />
+
+  <!-- Clears .no-js before paint and reveals the content if the page
+     never finishes initialising. Must stay synchronous. -->
+  <script src="assets/js/boot.js"></script>
 
   <!-- Vendor CSS Files -->
   <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet" />
@@ -140,7 +159,7 @@
 
 <body>
   <!-- ======= Mobile nav toggle button ======= -->
-  <button type="button" class="mobile-nav-toggle d-xl-none" aria-label="Toggle navigation" aria-expanded="false" aria-controls="header">
+  <button type="button" class="mobile-nav-toggle" aria-label="Toggle navigation" aria-expanded="false" aria-controls="header">
     <i class="bx bx-menu" aria-hidden="true"></i>
   </button>
 
@@ -206,7 +225,7 @@
 
         <div class="row">
           <div class="col-lg-4">
-            <img src="assets/img/profile.webp" class="img-fluid" alt="Suresh Reddy profile picture" loading="lazy" />
+            <img src="assets/img/profile.webp" width="799" height="800" class="img-fluid" alt="Suresh Reddy profile picture" loading="lazy" />
           </div>
           <div class="col-lg-8 pt-4 pt-lg-0 content">
             <div class="pb-5">
@@ -257,7 +276,7 @@
 
             <div class="col logo mx-lg-5" data-aos="zoom-in" data-aos-delay="200">
               <a href="https://www.credly.com/badges/f9fbf709-4ffb-43b3-a070-50db85789cf7/public_url" target="_blank" rel="noopener">
-                <img src="assets/img/certs/AWS-Architect-Professional.webp"
+                <img src="assets/img/certs/AWS-Architect-Professional.webp" width="512" height="512"
                   alt="AWS Certified Architect – Professional badge" style="width: 100%"
                   loading="lazy" />
               </a>
@@ -269,7 +288,7 @@
             <div class="col logo mx-lg-5" data-aos="zoom-in" data-aos-delay="200">
               <a href="https://www.youracclaim.com/badges/b119ea5a-0165-4597-8738-6dfabe4ebb0e/public_url"
                 target="_blank" rel="noopener">
-                <img src="assets/img/certs/AWS-DevOpsEngineer-Professional.webp"
+                <img src="assets/img/certs/AWS-DevOpsEngineer-Professional.webp" width="340" height="340"
                   alt="AWS Certified DevOps Engineer – Professional badge" style="width: 100%"
                   loading="lazy" />
               </a>
@@ -280,21 +299,21 @@
             <div class="col logo mx-lg-5" data-aos="zoom-in" data-aos-delay="200">
               <a href="https://www.youracclaim.com/badges/531fa23b-f013-4b36-89ff-e7fec1eee2c5/public_url"
                 target="_blank" rel="noopener">
-                <img src="assets/img/certs/AWS-Developer-Associate.webp" alt="AWS Certified Developer – Associate badge"
+                <img src="assets/img/certs/AWS-Developer-Associate.webp" width="340" height="340" alt="AWS Certified Developer – Associate badge"
                   style="width: 100%" loading="lazy" />
               </a>
             </div>
             <div class="col logo mx-lg-5" data-aos="zoom-in" data-aos-delay="200">
               <a href="https://www.youracclaim.com/badges/416a7e69-cc65-46aa-8a95-0d5db1976187/public_url"
                 target="_blank" rel="noopener">
-                <img src="assets/img/certs/AWS-SolArchitect-Associate.webp"
+                <img src="assets/img/certs/AWS-SolArchitect-Associate.webp" width="340" height="340"
                   alt="AWS Certified Solutions Architect – Associate badge" style="width: 100%"
                   loading="lazy" />
               </a>
             </div>
             <div class="col logo mx-lg-5" data-aos="zoom-in" data-aos-delay="200">
               <a href="https://www.credly.com/badges/84afe5a3-d00f-4e5e-a414-8701d4b13431/public_url" target="_blank" rel="noopener">
-                <img src="assets/img/certs/AWS-SysOpAdmin-Associate-2020.webp"
+                <img src="assets/img/certs/AWS-SysOpAdmin-Associate-2020.webp" width="340" height="340"
                   alt="AWS Certified SysOps Administrator – Associate badge" style="width: 100%"
                   loading="lazy" />
               </a>
@@ -319,19 +338,19 @@
         <div class="row align-items-center skills-content my-5">
           <div class="col logo mx-lg-5" data-aos="zoom-in" data-aos-delay="200">
             <a href="https://reactjs.org/" target="_blank" rel="noopener">
-              <img src="assets/img/skills/react-logo.webp" alt="React logo" style="width: 100%"
+              <img src="assets/img/skills/react-logo.webp" width="450" height="257" alt="React logo" style="width: 100%"
                 loading="lazy" />
             </a>
           </div>
           <div class="col logo mx-lg-5" data-aos="zoom-in" data-aos-delay="200">
             <a href="https://www.typescriptlang.org/" target="_blank" rel="noopener">
-              <img src="assets/img/skills/typescript-logo.webp" alt="TypeScript logo"
+              <img src="assets/img/skills/typescript-logo.webp" width="600" height="600" alt="TypeScript logo"
                 style="width: 30%" loading="lazy" />
             </a>
           </div>
           <div class="col logo mx-lg-5" data-aos="zoom-in" data-aos-delay="200">
             <a href="https://nodejs.org/en/" target="_blank" rel="noopener">
-              <img src="assets/img/skills/node-js-logo.webp" alt="NodeJS logo" style="width: 100%"
+              <img src="assets/img/skills/node-js-logo.webp" width="600" height="300" alt="NodeJS logo" style="width: 100%"
                 loading="lazy" />
             </a>
           </div>
@@ -340,19 +359,19 @@
         <div class="row align-items-center skills-content mb-5">
           <div class="col logo mx-lg-5" data-aos="zoom-in" data-aos-delay="200">
             <a href="https://www.java.com/en/" target="_blank" rel="noopener">
-              <img src="assets/img/skills/java-logo.webp" alt="Java logo" style="width: 60%"
+              <img src="assets/img/skills/java-logo.webp" width="600" height="600" alt="Java logo" style="width: 60%"
                 loading="lazy" />
             </a>
           </div>
           <div class="col logo mx-lg-5" data-aos="zoom-in" data-aos-delay="200">
             <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript" target="_blank" rel="noopener">
-              <img src="assets/img/skills/js-logo.webp" alt="JavaScript logo" style="width: 50%"
+              <img src="assets/img/skills/js-logo.webp" width="600" height="600" alt="JavaScript logo" style="width: 50%"
                 loading="lazy" />
             </a>
           </div>
           <div class="col logo mx-lg-5" data-aos="zoom-in" data-aos-delay="200">
             <a href="https://www.python.org/" target="_blank" rel="noopener">
-              <img src="assets/img/skills/python-logo.webp" alt="Python logo" style="width: 100%"
+              <img src="assets/img/skills/python-logo.webp" width="450" height="450" alt="Python logo" style="width: 100%"
                 loading="lazy" />
             </a>
           </div>
@@ -361,19 +380,19 @@
         <div class="row align-items-center skills-content mt-5">
           <div class="col logo mx-lg-5" data-aos="zoom-in" data-aos-delay="200">
             <a href="https://www.mysql.com/" target="_blank" rel="noopener">
-              <img src="assets/img/skills/mysql-logo.webp" alt="MySQL logo" style="width: 50%"
+              <img src="assets/img/skills/mysql-logo.webp" width="600" height="600" alt="MySQL logo" style="width: 50%"
                 loading="lazy" />
             </a>
           </div>
           <div class="col logo mx-lg-5" data-aos="zoom-in" data-aos-delay="200">
             <a href="https://cassandra.apache.org/_/index.html" target="_blank" rel="noopener">
-              <img src="assets/img/skills/cassandra-logo.webp" alt="Cassandra logo" style="width: 50%"
+              <img src="assets/img/skills/cassandra-logo.webp" width="600" height="402" alt="Cassandra logo" style="width: 50%"
                 loading="lazy" />
             </a>
           </div>
           <div class="col logo mx-lg-5" data-aos="zoom-in" data-aos-delay="200">
             <a href="https://www.mongodb.com/" target="_blank" rel="noopener">
-              <img src="assets/img/skills/mongodb-logo.webp" alt="MongoDB logo" style="width: 100%"
+              <img src="assets/img/skills/mongodb-logo.webp" width="600" height="337" alt="MongoDB logo" style="width: 100%"
                 loading="lazy" />
             </a>
           </div>
@@ -382,19 +401,19 @@
         <div class="row align-items-center skills-content mt-5">
           <div class="col logo mx-lg-5" data-aos="zoom-in" data-aos-delay="200">
             <a href="https://aws.amazon.com/" target="_blank" rel="noopener">
-              <img src="assets/img/skills/aws-logo.webp" alt="AWS" style="width: 100%"
+              <img src="assets/img/skills/aws-logo.webp" width="450" height="236" alt="AWS" style="width: 100%"
                 loading="lazy" />
             </a>
           </div>
           <div class="col logo mx-lg-5" data-aos="zoom-in" data-aos-delay="200">
             <a href="https://www.docker.com/" target="_blank" rel="noopener">
-              <img src="assets/img/skills/docker-logo.webp" alt="Docker" style="width: 100%"
+              <img src="assets/img/skills/docker-logo.webp" width="450" height="254" alt="Docker" style="width: 100%"
                 loading="lazy" />
             </a>
           </div>
           <div class="col logo mx-lg-5" data-aos="zoom-in" data-aos-delay="200">
             <a href="https://kubernetes.io/" target="_blank" rel="noopener">
-              <img src="assets/img/skills/k8s-logo.webp" alt="Kubernetes" style="width: 100%"
+              <img src="assets/img/skills/k8s-logo.webp" width="450" height="327" alt="Kubernetes" style="width: 100%"
                 loading="lazy" />
             </a>
           </div>

@@ -1,9 +1,17 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="no-js">
 
 <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+
+    <!-- Content Security Policy. GitHub Pages cannot set response headers, so this
+       goes in a meta tag; frame-ancestors is deliberately absent because it is
+       ignored there and only logs a console warning. script-src has no
+       'unsafe-inline': the inline on* handlers this page used to carry are now
+       data-action attributes dispatched from assets/js/tools.js. style-src still
+       needs it for the style="" attributes in the markup. -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; img-src 'self' data:; font-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; worker-src 'self' blob:; form-action 'self'" />
 
     <title>Developer Tools - Suresh Reddy</title>
     <meta name="description"
@@ -76,16 +84,23 @@
     <link rel="manifest" href="manifest.json" />
     <meta name="theme-color" content="#0563bb" />
 
-    <!-- Google Fonts. Only the 8 variants actually rendered anywhere on the site
-       (measured, not guessed): Open Sans 400/700/400i, Poppins 400/600,
-       Raleway 500/600/700. Loaded off the critical path via media="print" --
-       display=swap already means text paints in the fallback first, so there is
-       nothing to gain from blocking render on the third-party round trip. -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,400;0,700;1,400&family=Poppins:wght@400;600&family=Raleway:wght@500;600;700&display=swap" />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,400;0,700;1,400&family=Poppins:wght@400;600&family=Raleway:wght@500;600;700&display=swap" media="print" onload="this.media='all'" />
-    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,400;0,700;1,400&family=Poppins:wght@400;600&family=Raleway:wght@500;600;700&display=swap" /></noscript>
+    <!-- Self-hosted fonts. Only the 8 variants actually rendered anywhere on the
+       site (measured, not guessed): Open Sans 400/700/400i, Poppins 400/600,
+       Raleway 500/600/700. Open Sans and Raleway are variable, so one file each
+       covers their whole weight range -- see assets/css/fonts.css.
+
+       Serving these from this origin removes a third-party DNS lookup, TLS
+       handshake and two round trips from every cold load, lets the service worker
+       cache them, and stops handing each visitor's IP to Google. The two faces
+       that paint headings and body copy are preloaded; the rest are pulled in on
+       demand by unicode-range. -->
+    <link rel="preload" as="font" type="font/woff2" href="assets/fonts/raleway-normal-500-700-latin.woff2" crossorigin />
+    <link rel="preload" as="font" type="font/woff2" href="assets/fonts/opensans-normal-400-700-latin.woff2" crossorigin />
+    <link rel="stylesheet" href="assets/css/fonts.css" />
+
+    <!-- Clears .no-js before paint and reveals the content if the page
+       never finishes initialising. Must stay synchronous. -->
+    <script src="assets/js/boot.js"></script>
 
     <!-- Vendor CSS Files -->
     <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet" />
@@ -136,6 +151,30 @@
         .diff-inline-span {
             display: inline-block;
             width: 100%;
+        }
+
+        .privacy-note {
+            max-width: 760px;
+            margin: 0 auto 1.75rem;
+            padding: 0.75rem 1rem;
+            border: 1px solid #cfe2f7;
+            border-left: 3px solid #0563bb;
+            border-radius: 4px;
+            background: #f2f8ff;
+            color: #3f4b57;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .privacy-note i {
+            color: #0563bb;
+            font-size: 16px;
+            vertical-align: -2px;
+            margin-right: 4px;
+        }
+
+        .privacy-note strong {
+            color: #2b3742;
         }
 
         .sticky-controls {
@@ -262,7 +301,7 @@
 
 <body>
     <!-- ======= Mobile nav toggle button ======= -->
-    <button type="button" class="mobile-nav-toggle d-xl-none" aria-label="Toggle navigation" aria-expanded="false" aria-controls="header">
+    <button type="button" class="mobile-nav-toggle" aria-label="Toggle navigation" aria-expanded="false" aria-controls="header">
         <i class="bx bx-menu" aria-hidden="true"></i>
     </button>
 
@@ -303,6 +342,18 @@
                     <p>Useful developer tools for everyday tasks.</p>
                 </div>
 
+                <!-- People paste production tokens and private keys into the JWT
+                     tabs. That everything stays in the browser was only ever
+                     stated in the meta description, where nobody using the page
+                     can see it. -->
+                <p class="privacy-note">
+                    <i class="bx bx-lock-alt" aria-hidden="true"></i>
+                    <strong>Everything runs in your browser.</strong>
+                    No input, token or key is ever uploaded, logged or sent
+                    anywhere. There is no server to send it to: this is a static
+                    page, and it keeps working with the network switched off.
+                </p>
+
                 <ul class="nav nav-tabs" id="toolsTabs" role="tablist">
                     <li class="nav-item">
                         <a class="nav-link active" id="json-tab" data-toggle="tab" href="#json" role="tab"
@@ -341,25 +392,25 @@
                                 <label for="jsonInput">Input JSON</label>
                                 <div>
                                     <input type="file" id="jsonInputFile" accept=".json,.txt" style="display: none;"
-                                        onchange="handleJsonUpload(this)">
+                                        data-change-action="jsonUpload">
                                     <button class="btn btn-sm btn-outline-secondary mb-2 mr-1"
-                                        onclick="document.getElementById('jsonInputFile').click()"><i
+                                        data-action="openFilePicker" data-args="jsonInputFile"><i
                                             class="bx bx-upload"></i> Upload</button>
                                     <button class="btn btn-sm btn-outline-secondary mb-2" id="jsonInputCopyBtn"
-                                        onclick="copyToClipboard('jsonInput', this)" disabled>Copy</button>
+                                        data-action="copy" data-args="jsonInput" disabled>Copy</button>
                                 </div>
                             </div>
                             <div class="editor-container">
                                 <div class="editor-line-numbers" id="jsonInputLineNums"></div>
                                 <textarea class="form-control editor-textarea" id="jsonInput" rows="10"
-                                    oninput="checkInput('jsonInput', 'jsonInputCopyBtn')"
+                                    data-input-action="checkInput" data-args="jsonInput,jsonInputCopyBtn"
                                     placeholder="Paste your JSON here..."></textarea>
                             </div>
                         </div>
                         <div class="sticky-controls mb-3">
                             <div class="row align-items-center">
                                 <div class="col-lg-4 col-md-12 mb-2 mb-lg-0 d-flex align-items-center">
-                                    <button class="btn btn-primary mr-2" onclick="formatJSON()">Format</button>
+                                    <button class="btn btn-primary mr-2" data-action="format">Format</button>
                                     <select class="custom-select" id="jsonIndent" style="width: auto;">
                                         <option value="2">2 Spaces</option>
                                         <option value="4" selected>4 Spaces</option>
@@ -378,10 +429,10 @@
                                             class="form-control form-control-sm mr-2 mb-2"
                                             placeholder="Filename (optional)" style="width: 180px;">
                                         <button class="btn btn-sm btn-outline-secondary mr-2 mb-2"
-                                            id="jsonOutputDownloadBtn" onclick="downloadJsonOutput()"
+                                            id="jsonOutputDownloadBtn" data-action="downloadJson"
                                             disabled>Download</button>
                                         <button class="btn btn-sm btn-outline-secondary mb-2" id="jsonCopyBtn"
-                                            onclick="copyToClipboard('jsonOutput', this)" disabled>Copy</button>
+                                            data-action="copy" data-args="jsonOutput" disabled>Copy</button>
                                     </div>
                                 </div>
                             </div>
@@ -402,18 +453,18 @@
                                         <div>
                                             <input type="file" id="jsonDiff1File" accept=".json,.txt"
                                                 style="display: none;"
-                                                onchange="handleFileUpload(this, 'jsonDiff1', 'jsonDiff1CopyBtn')">
+                                                data-change-action="fileUpload" data-args="jsonDiff1,jsonDiff1CopyBtn">
                                             <button class="btn btn-sm btn-outline-secondary mb-2 mr-1"
-                                                onclick="document.getElementById('jsonDiff1File').click()"><i
+                                                data-action="openFilePicker" data-args="jsonDiff1File"><i
                                                     class="bx bx-upload"></i> Upload</button>
                                             <button class="btn btn-sm btn-outline-secondary mb-2" id="jsonDiff1CopyBtn"
-                                                onclick="copyToClipboard('jsonDiff1', this)" disabled>Copy</button>
+                                                data-action="copy" data-args="jsonDiff1" disabled>Copy</button>
                                         </div>
                                     </div>
                                     <div class="editor-container">
                                         <div class="editor-line-numbers" id="jsonDiff1LineNums"></div>
                                         <textarea class="form-control editor-textarea" id="jsonDiff1" rows="10"
-                                            oninput="checkInput('jsonDiff1', 'jsonDiff1CopyBtn')"
+                                            data-input-action="checkInput" data-args="jsonDiff1,jsonDiff1CopyBtn"
                                             placeholder="Paste original JSON here..."></textarea>
                                     </div>
                                 </div>
@@ -425,18 +476,18 @@
                                         <div>
                                             <input type="file" id="jsonDiff2File" accept=".json,.txt"
                                                 style="display: none;"
-                                                onchange="handleFileUpload(this, 'jsonDiff2', 'jsonDiff2CopyBtn')">
+                                                data-change-action="fileUpload" data-args="jsonDiff2,jsonDiff2CopyBtn">
                                             <button class="btn btn-sm btn-outline-secondary mb-2 mr-1"
-                                                onclick="document.getElementById('jsonDiff2File').click()"><i
+                                                data-action="openFilePicker" data-args="jsonDiff2File"><i
                                                     class="bx bx-upload"></i> Upload</button>
                                             <button class="btn btn-sm btn-outline-secondary mb-2" id="jsonDiff2CopyBtn"
-                                                onclick="copyToClipboard('jsonDiff2', this)" disabled>Copy</button>
+                                                data-action="copy" data-args="jsonDiff2" disabled>Copy</button>
                                         </div>
                                     </div>
                                     <div class="editor-container">
                                         <div class="editor-line-numbers" id="jsonDiff2LineNums"></div>
                                         <textarea class="form-control editor-textarea" id="jsonDiff2" rows="10"
-                                            oninput="checkInput('jsonDiff2', 'jsonDiff2CopyBtn')"
+                                            data-input-action="checkInput" data-args="jsonDiff2,jsonDiff2CopyBtn"
                                             placeholder="Paste modified JSON here..."></textarea>
                                     </div>
                                 </div>
@@ -445,7 +496,7 @@
                         <div class="sticky-controls mb-3">
                             <div class="row align-items-center">
                                 <div class="col-12 col-md-auto mb-2 mb-md-0">
-                                    <button class="btn btn-primary btn-block" onclick="compareJSON()">Compare</button>
+                                    <button class="btn btn-primary btn-block" data-action="compare">Compare</button>
                                 </div>
                                 <div class="col-12 col-md">
                                     <div id="diffControls" style="display: none;">
@@ -454,24 +505,24 @@
                                             <div class="btn-group btn-group-toggle mr-2 mb-2 mb-sm-0"
                                                 data-toggle="buttons">
                                                 <label class="btn btn-sm btn-outline-secondary active"
-                                                    onclick="setDiffView('inline')">
+                                                    data-action="diffView" data-args="inline">
                                                     <input type="radio" name="diffView" id="diffViewInline"
                                                         autocomplete="off" checked> Inline
                                                 </label>
                                                 <label class="btn btn-sm btn-outline-secondary"
-                                                    onclick="setDiffView('side-by-side')">
+                                                    data-action="diffView" data-args="side-by-side">
                                                     <input type="radio" name="diffView" id="diffViewSide"
                                                         autocomplete="off"> Side-by-Side
                                                 </label>
                                             </div>
                                             <div class="btn-group mb-2 mb-sm-0">
                                                 <button class="btn btn-sm btn-outline-secondary" id="diffPrevBtn"
-                                                    onclick="navigateDiff(-1)" title="Previous Difference" disabled><i
+                                                    data-action="diffNav" data-args="-1" title="Previous Difference" disabled><i
                                                         class="bx bx-chevron-up"></i> Prev</button>
                                                 <span id="diffCount" class="btn btn-sm btn-outline-secondary disabled"
                                                     style="opacity: 1; cursor: default; background-color: #fff;">0/0</span>
                                                 <button class="btn btn-sm btn-outline-secondary" id="diffNextBtn"
-                                                    onclick="navigateDiff(1)" title="Next Difference" disabled><i
+                                                    data-action="diffNav" data-args="1" title="Next Difference" disabled><i
                                                         class="bx bx-chevron-down"></i> Next</button>
                                             </div>
                                         </div>
@@ -492,34 +543,34 @@
                             <div class="d-flex justify-content-between align-items-center">
                                 <label for="jwtInput">JWT Token</label>
                                 <button class="btn btn-sm btn-outline-secondary mb-2" id="jwtInputCopyBtn"
-                                    onclick="copyToClipboard('jwtInput', this)">Copy</button>
+                                    data-action="copy" data-args="jwtInput">Copy</button>
                             </div>
                             <textarea class="form-control" id="jwtInput" rows="3"
                                 placeholder="Paste your JWT token here..."
-                                oninput="checkInput('jwtInput', 'jwtInputCopyBtn')">eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IlN1cmVzaCBSZWRkeSIsImlhdCI6MTUxNjIzOTAyMn0.t-IDcSemACt8x4iTMCda8Yhe3iZaWbvV5XKSTbuAn0M</textarea>
+                                data-input-action="checkInput" data-args="jwtInput,jwtInputCopyBtn">eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IlN1cmVzaCBSZWRkeSIsImlhdCI6MTUxNjIzOTAyMn0.t-IDcSemACt8x4iTMCda8Yhe3iZaWbvV5XKSTbuAn0M</textarea>
                         </div>
                         <div class="form-group">
                             <div class="d-flex justify-content-between align-items-center">
                                 <label for="jwtVerifySecret">Secret (for HMAC algorithms)</label>
                                 <button class="btn btn-sm btn-outline-secondary mb-2" id="jwtVerifySecretCopyBtn"
-                                    onclick="copyToClipboard('jwtVerifySecret', this)" disabled>Copy</button>
+                                    data-action="copy" data-args="jwtVerifySecret" disabled>Copy</button>
                             </div>
                             <input type="text" class="form-control" id="jwtVerifySecret"
                                 placeholder="Enter secret for HS256, HS384, HS512"
-                                oninput="checkInput('jwtVerifySecret', 'jwtVerifySecretCopyBtn')">
+                                data-input-action="checkInput" data-args="jwtVerifySecret,jwtVerifySecretCopyBtn">
                         </div>
                         <div class="form-group">
                             <div class="d-flex justify-content-between align-items-center">
                                 <label for="jwtVerifyPublicKey">Public Key / Certificate (for RSA, ECDSA)</label>
                                 <button class="btn btn-sm btn-outline-secondary mb-2" id="jwtVerifyPublicKeyCopyBtn"
-                                    onclick="copyToClipboard('jwtVerifyPublicKey', this)" disabled>Copy</button>
+                                    data-action="copy" data-args="jwtVerifyPublicKey" disabled>Copy</button>
                             </div>
                             <textarea class="form-control" id="jwtVerifyPublicKey" rows="3"
                                 placeholder="-----BEGIN PUBLIC KEY-----..."
-                                oninput="checkInput('jwtVerifyPublicKey', 'jwtVerifyPublicKeyCopyBtn')"></textarea>
+                                data-input-action="checkInput" data-args="jwtVerifyPublicKey,jwtVerifyPublicKeyCopyBtn"></textarea>
                         </div>
                         <div class="d-flex align-items-center mb-3">
-                            <button class="btn btn-primary mr-3" onclick="decodeJWT()">Decode</button>
+                            <button class="btn btn-primary mr-3" data-action="decodeJwt">Decode</button>
                             <div id="jwtVerificationStatus"></div>
                         </div>
                         <div class="row">
@@ -528,7 +579,7 @@
                                     <div class="d-flex justify-content-between align-items-center">
                                         <label for="jwtHeader">Header</label>
                                         <button class="btn btn-sm btn-outline-secondary mb-2" id="jwtHeaderCopyBtn"
-                                            onclick="copyToClipboard('jwtHeader', this)" disabled>Copy</button>
+                                            data-action="copy" data-args="jwtHeader" disabled>Copy</button>
                                     </div>
                                     <pre class="form-control h-auto" id="jwtHeader"
                                         style="min-height: 100px; background-color: #e9ecef;"></pre>
@@ -539,7 +590,7 @@
                                     <div class="d-flex justify-content-between align-items-center">
                                         <label for="jwtPayload">Payload</label>
                                         <button class="btn btn-sm btn-outline-secondary mb-2" id="jwtPayloadCopyBtn"
-                                            onclick="copyToClipboard('jwtPayload', this)" disabled>Copy</button>
+                                            data-action="copy" data-args="jwtPayload" disabled>Copy</button>
                                     </div>
                                     <pre class="form-control h-auto" id="jwtPayload"
                                         style="min-height: 100px; background-color: #e9ecef;"></pre>
@@ -551,7 +602,7 @@
                     <div class="tab-pane fade" id="jwt-encode" role="tabpanel" aria-labelledby="jwt-encode-tab">
                         <div class="form-group">
                             <label for="jwtAlgSelect">Algorithm</label>
-                            <select class="form-control" id="jwtAlgSelect" onchange="updateJwtHeader()">
+                            <select class="form-control" id="jwtAlgSelect" data-change-action="updateJwtHeader">
                                 <option value="HS256" selected>HS256</option>
                                 <option value="HS384">HS384</option>
                                 <option value="HS512">HS512</option>
@@ -572,10 +623,10 @@
                                     <div class="d-flex justify-content-between align-items-center">
                                         <label for="jwtHeaderInput">Header (JSON)</label>
                                         <button class="btn btn-sm btn-outline-secondary mb-2" id="jwtHeaderInputCopyBtn"
-                                            onclick="copyToClipboard('jwtHeaderInput', this)">Copy</button>
+                                            data-action="copy" data-args="jwtHeaderInput">Copy</button>
                                     </div>
                                     <textarea class="form-control" id="jwtHeaderInput" rows="5"
-                                        oninput="checkInput('jwtHeaderInput', 'jwtHeaderInputCopyBtn')">{
+                                        data-input-action="checkInput" data-args="jwtHeaderInput,jwtHeaderInputCopyBtn">{
     "alg": "HS256",
     "typ": "JWT"
 }</textarea>
@@ -587,10 +638,10 @@
                                         <label for="jwtPayloadInput">Payload (JSON)</label>
                                         <button class="btn btn-sm btn-outline-secondary mb-2"
                                             id="jwtPayloadInputCopyBtn"
-                                            onclick="copyToClipboard('jwtPayloadInput', this)">Copy</button>
+                                            data-action="copy" data-args="jwtPayloadInput">Copy</button>
                                     </div>
                                     <textarea class="form-control" id="jwtPayloadInput" rows="5"
-                                        oninput="checkInput('jwtPayloadInput', 'jwtPayloadInputCopyBtn')">{
+                                        data-input-action="checkInput" data-args="jwtPayloadInput,jwtPayloadInputCopyBtn">{
     "sub": "1234567890",
     "name": "Suresh Reddy",
     "iat": 1516239022
@@ -602,32 +653,32 @@
                             <div class="d-flex justify-content-between align-items-center">
                                 <label for="jwtSecretInput">Secret (for HMAC algorithms)</label>
                                 <button class="btn btn-sm btn-outline-secondary mb-2" id="jwtSecretInputCopyBtn"
-                                    onclick="copyToClipboard('jwtSecretInput', this)" disabled>Copy</button>
+                                    data-action="copy" data-args="jwtSecretInput" disabled>Copy</button>
                             </div>
                             <input type="text" class="form-control" id="jwtSecretInput"
                                 placeholder="Enter secret for HS256, HS384, HS512"
-                                oninput="checkInput('jwtSecretInput', 'jwtSecretInputCopyBtn')">
+                                data-input-action="checkInput" data-args="jwtSecretInput,jwtSecretInputCopyBtn">
                         </div>
                         <div class="form-group">
                             <div class="d-flex justify-content-between align-items-center">
                                 <label for="jwtPrivateKeyInput">Private Key (for RSA, ECDSA)</label>
                                 <button class="btn btn-sm btn-outline-secondary mb-2" id="jwtPrivateKeyInputCopyBtn"
-                                    onclick="copyToClipboard('jwtPrivateKeyInput', this)" disabled>Copy</button>
+                                    data-action="copy" data-args="jwtPrivateKeyInput" disabled>Copy</button>
                             </div>
                             <textarea class="form-control" id="jwtPrivateKeyInput" rows="3"
                                 placeholder="-----BEGIN PRIVATE KEY-----..."
-                                oninput="checkInput('jwtPrivateKeyInput', 'jwtPrivateKeyInputCopyBtn')"></textarea>
+                                data-input-action="checkInput" data-args="jwtPrivateKeyInput,jwtPrivateKeyInputCopyBtn"></textarea>
                         </div>
                         <div class="form-row align-items-center mb-3">
                             <div class="col-auto">
-                                <button class="btn btn-primary" onclick="encodeJWT()">Encode</button>
+                                <button class="btn btn-primary" data-action="encodeJwt">Encode</button>
                             </div>
                         </div>
                         <div class="form-group">
                             <div class="d-flex justify-content-between align-items-center">
                                 <label for="jwtOutput">Generated Token</label>
                                 <button class="btn btn-sm btn-outline-secondary mb-2" id="jwtOutputCopyBtn"
-                                    onclick="copyToClipboard('jwtOutput', this)" disabled>Copy</button>
+                                    data-action="copy" data-args="jwtOutput" disabled>Copy</button>
                             </div>
                             <textarea class="form-control" id="jwtOutput" rows="3" readonly></textarea>
                         </div>
@@ -638,20 +689,20 @@
                             <div class="d-flex justify-content-between align-items-center">
                                 <label for="base64Input">Input</label>
                                 <button class="btn btn-sm btn-outline-secondary mb-2" id="base64InputCopyBtn"
-                                    onclick="copyToClipboard('base64Input', this)">Copy</button>
+                                    data-action="copy" data-args="base64Input">Copy</button>
                             </div>
                             <textarea class="form-control" id="base64Input" rows="5" placeholder="Paste text here..."
-                                oninput="checkInput('base64Input', 'base64InputCopyBtn')"></textarea>
+                                data-input-action="checkInput" data-args="base64Input,base64InputCopyBtn"></textarea>
                         </div>
                         <div class="mb-3">
-                            <button class="btn btn-primary mr-2" onclick="base64Encode()">Encode</button>
-                            <button class="btn btn-primary" onclick="base64Decode()">Decode</button>
+                            <button class="btn btn-primary mr-2" data-action="base64Encode">Encode</button>
+                            <button class="btn btn-primary" data-action="base64Decode">Decode</button>
                         </div>
                         <div class="form-group">
                             <div class="d-flex justify-content-between align-items-center">
                                 <label for="base64Output">Output</label>
                                 <button class="btn btn-sm btn-outline-secondary mb-2" id="base64OutputCopyBtn"
-                                    onclick="copyToClipboard('base64Output', this)" disabled>Copy</button>
+                                    data-action="copy" data-args="base64Output" disabled>Copy</button>
                             </div>
                             <textarea class="form-control" id="base64Output" rows="5" readonly></textarea>
                         </div>
@@ -662,20 +713,20 @@
                             <div class="d-flex justify-content-between align-items-center">
                                 <label for="urlInput">Input</label>
                                 <button class="btn btn-sm btn-outline-secondary mb-2" id="urlInputCopyBtn"
-                                    onclick="copyToClipboard('urlInput', this)">Copy</button>
+                                    data-action="copy" data-args="urlInput">Copy</button>
                             </div>
                             <textarea class="form-control" id="urlInput" rows="5" placeholder="Paste text here..."
-                                oninput="checkInput('urlInput', 'urlInputCopyBtn')"></textarea>
+                                data-input-action="checkInput" data-args="urlInput,urlInputCopyBtn"></textarea>
                         </div>
                         <div class="mb-3">
-                            <button class="btn btn-primary mr-2" onclick="urlEncode()">Encode</button>
-                            <button class="btn btn-primary" onclick="urlDecode()">Decode</button>
+                            <button class="btn btn-primary mr-2" data-action="urlEncode">Encode</button>
+                            <button class="btn btn-primary" data-action="urlDecode">Decode</button>
                         </div>
                         <div class="form-group">
                             <div class="d-flex justify-content-between align-items-center">
                                 <label for="urlOutput">Output</label>
                                 <button class="btn btn-sm btn-outline-secondary mb-2" id="urlOutputCopyBtn"
-                                    onclick="copyToClipboard('urlOutput', this)" disabled>Copy</button>
+                                    data-action="copy" data-args="urlOutput" disabled>Copy</button>
                             </div>
                             <textarea class="form-control" id="urlOutput" rows="5" readonly></textarea>
                         </div>
@@ -687,26 +738,26 @@
                                 <label for="yamlJsonInput">Input (YAML or JSON)</label>
                                 <div>
                                     <input type="file" id="yamlJsonInputFile" accept=".json,.yaml,.yml,.txt"
-                                        style="display: none;" onchange="handleYamlJsonUpload(this)">
+                                        style="display: none;" data-change-action="yamlJsonUpload">
                                     <button class="btn btn-sm btn-outline-secondary mb-2 mr-1"
-                                        onclick="document.getElementById('yamlJsonInputFile').click()"><i
+                                        data-action="openFilePicker" data-args="yamlJsonInputFile"><i
                                             class="bx bx-upload"></i> Upload</button>
                                     <button class="btn btn-sm btn-outline-secondary mb-2" id="yamlJsonInputCopyBtn"
-                                        onclick="copyToClipboard('yamlJsonInput', this)">Copy</button>
+                                        data-action="copy" data-args="yamlJsonInput">Copy</button>
                                 </div>
                             </div>
                             <div class="editor-container">
                                 <div class="editor-line-numbers" id="yamlJsonInputLineNums"></div>
                                 <textarea class="form-control editor-textarea" id="yamlJsonInput" rows="10"
                                     placeholder="Paste YAML or JSON here..."
-                                    oninput="checkInput('yamlJsonInput', 'yamlJsonInputCopyBtn')"></textarea>
+                                    data-input-action="checkInput" data-args="yamlJsonInput,yamlJsonInputCopyBtn"></textarea>
                             </div>
                         </div>
                         <div class="sticky-controls mb-3">
                             <div class="row align-items-center">
                                 <div class="col-lg-4 col-md-12 mb-2 mb-lg-0">
-                                    <button class="btn btn-primary mr-2" onclick="yamlToJson()">YAML to JSON</button>
-                                    <button class="btn btn-primary" onclick="jsonToYaml()">JSON to YAML</button>
+                                    <button class="btn btn-primary mr-2" data-action="yamlToJson">YAML to JSON</button>
+                                    <button class="btn btn-primary" data-action="jsonToYaml">JSON to YAML</button>
                                 </div>
                                 <div class="col-lg-8 col-md-12">
                                     <div class="d-flex flex-wrap justify-content-lg-end align-items-center">
@@ -720,10 +771,10 @@
                                             class="form-control form-control-sm mr-2 mb-2"
                                             placeholder="Filename (optional)" style="width: 180px;">
                                         <button class="btn btn-sm btn-outline-secondary mr-2 mb-2"
-                                            id="yamlJsonOutputDownloadBtn" onclick="downloadYamlJsonOutput()"
+                                            id="yamlJsonOutputDownloadBtn" data-action="downloadYamlJson"
                                             disabled>Download</button>
                                         <button class="btn btn-sm btn-outline-secondary mb-2" id="yamlJsonOutputCopyBtn"
-                                            onclick="copyToClipboard('yamlJsonOutput', this)" disabled>Copy</button>
+                                            data-action="copy" data-args="yamlJsonOutput" disabled>Copy</button>
                                     </div>
                                 </div>
                             </div>

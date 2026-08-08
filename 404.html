@@ -1,9 +1,17 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="no-js">
 
 <head>
   <meta charset="utf-8" />
   <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+
+  <!-- Content Security Policy. GitHub Pages cannot set response headers, so this
+     goes in a meta tag; frame-ancestors is deliberately absent because it is
+     ignored there and only logs a console warning. script-src has no
+     'unsafe-inline': the only inline handler this page had was the font
+     stylesheet's onload, which went away with self-hosting. style-src still
+     needs it for the style="" attributes in the markup. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; img-src 'self' data:; font-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; form-action 'self'" />
 
   <title>Page not found - Suresh Reddy</title>
   <meta name="description" content="That page does not exist. Head back to the portfolio, developer tools or games." />
@@ -19,16 +27,23 @@
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#0563bb" />
 
-  <!-- Google Fonts. Only the 8 variants actually rendered anywhere on the site
-     (measured, not guessed): Open Sans 400/700/400i, Poppins 400/600,
-     Raleway 500/600/700. Loaded off the critical path via media="print" --
-     display=swap already means text paints in the fallback first, so there is
-     nothing to gain from blocking render on the third-party round trip. -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,400;0,700;1,400&family=Poppins:wght@400;600&family=Raleway:wght@500;600;700&display=swap" />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,400;0,700;1,400&family=Poppins:wght@400;600&family=Raleway:wght@500;600;700&display=swap" media="print" onload="this.media='all'" />
-  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,400;0,700;1,400&family=Poppins:wght@400;600&family=Raleway:wght@500;600;700&display=swap" /></noscript>
+  <!-- Self-hosted fonts. Only the 8 variants actually rendered anywhere on the
+     site (measured, not guessed): Open Sans 400/700/400i, Poppins 400/600,
+     Raleway 500/600/700. Open Sans and Raleway are variable, so one file each
+     covers their whole weight range -- see assets/css/fonts.css.
+
+     Serving these from this origin removes a third-party DNS lookup, TLS
+     handshake and two round trips from every cold load, lets the service worker
+     cache them, and stops handing each visitor's IP to Google. The two faces
+     that paint headings and body copy are preloaded; the rest are pulled in on
+     demand by unicode-range. -->
+  <link rel="preload" as="font" type="font/woff2" href="assets/fonts/raleway-normal-500-700-latin.woff2" crossorigin />
+  <link rel="preload" as="font" type="font/woff2" href="assets/fonts/opensans-normal-400-700-latin.woff2" crossorigin />
+  <link rel="stylesheet" href="assets/css/fonts.css" />
+
+  <!-- Clears .no-js before paint and reveals the content if the page
+     never finishes initialising. Must stay synchronous. -->
+  <script src="assets/js/boot.js"></script>
 
   <!-- Vendor CSS Files -->
   <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet" />
@@ -41,7 +56,7 @@
 
 <body>
   <!-- ======= Mobile nav toggle button ======= -->
-  <button type="button" class="mobile-nav-toggle d-xl-none" aria-label="Toggle navigation" aria-expanded="false" aria-controls="header">
+  <button type="button" class="mobile-nav-toggle" aria-label="Toggle navigation" aria-expanded="false" aria-controls="header">
     <i class="bx bx-menu" aria-hidden="true"></i>
   </button>
 

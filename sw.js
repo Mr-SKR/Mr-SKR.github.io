@@ -1,7 +1,7 @@
 // One cache for both precached and runtime-fetched entries. Using two caches
 // would let the precached copy permanently shadow the revalidated one, since
 // caches.match() searches caches in creation order.
-const VERSION = "v8";
+const VERSION = "v9";
 const CACHE = `site-${VERSION}`;
 
 // App shell. Everything else (images, fonts) is cached at runtime on first use.
@@ -17,6 +17,15 @@ const PRECACHE_URLS = [
   "assets/img/icon-512.png",
   "assets/img/icon-512-maskable.png",
   "assets/css/style.css",
+  "assets/css/fonts.css",
+  // The two faces every page paints with immediately. The other eight are
+  // pulled in by unicode-range only if the text needs them, so they are left to
+  // the runtime cache. Self-hosting is what makes this possible at all: the
+  // fetch handler ignores cross-origin requests, so the old Google Fonts files
+  // could never be cached here.
+  "assets/fonts/raleway-normal-500-700-latin.woff2",
+  "assets/fonts/opensans-normal-400-700-latin.woff2",
+  "assets/js/boot.js",
   "assets/js/main.js",
   "assets/js/tools.js",
   "assets/js/games.js",
