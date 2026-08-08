@@ -41,7 +41,14 @@ body {
 }
 
 /* The hero carries its own 100dvh height; without this it would be treated as
-   shrinkable and collapse on short viewports. */
+   shrinkable and collapse on short viewports. Since it moved inside #main it
+   also matches `#main > section { flex: 1 0 auto }`, so grow is pinned back to
+   0 as well: the hero should stay exactly one viewport tall and let the
+   sections below it absorb any slack. */
+#main > #hero {
+  flex-grow: 0;
+}
+
 #hero,
 #footer {
   flex-shrink: 0;
@@ -102,6 +109,146 @@ h6 {
   color: #fff;
   background: #0678e3;
   transition: background 0.2s ease-in-out;
+}
+
+/*--------------------------------------------------------------
+# Reduced motion
+--------------------------------------------------------------*/
+/* The site leans hard on movement: AOS fades and zooms every section in, the
+   nav and back-to-top scroll over 1.5 seconds, the hero types itself out and
+   the preloader spins. For someone with a vestibular disorder that is not
+   decoration, it is a trigger, and the OS setting is how they say so.
+
+   Animations are neutralised rather than removed outright: AOS reveals content
+   by transitioning opacity, so `animation: none` alone would leave every
+   [data-aos] element stuck at opacity 0 and blank the page. Forcing the end
+   state instead keeps everything visible and simply still.
+
+   The JS half of this (scroll behaviour, typing) lives in assets/js/main.js. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  [data-aos] {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  /* The spinner is pure decoration and its whole point is spinning. */
+  #preloader:before {
+    display: none;
+  }
+}
+
+/*--------------------------------------------------------------
+# Button contrast
+--------------------------------------------------------------*/
+/* Both of these failed WCAG AA at the measured ratios below.
+
+   .btn-primary was still Bootstrap's stock #007bff, which gives white text only
+   3.97:1. It was also the one place on the site not using the brand blue, so
+   moving it to #0563bb fixes the contrast (5.99:1) and the inconsistency at the
+   same time.
+
+   .btn-outline-secondary's #6c757d lands at 4.4:1 on the #f5f8fd section tint,
+   which is a near miss rather than a wild one; #5a6268 takes it to 5.83:1. */
+.btn-primary {
+  background-color: #0563bb;
+  border-color: #0563bb;
+}
+
+.btn-primary:hover,
+.btn-primary:focus,
+.btn-primary:not(:disabled):not(.disabled):active {
+  background-color: #04529c;
+  border-color: #04529c;
+}
+
+.btn-outline-secondary {
+  color: #5a6268;
+  border-color: #5a6268;
+}
+
+.btn-outline-secondary:hover,
+.btn-outline-secondary:not(:disabled):not(.disabled):active {
+  background-color: #5a6268;
+  border-color: #5a6268;
+  color: #fff;
+}
+
+/*--------------------------------------------------------------
+# Focus visibility
+--------------------------------------------------------------*/
+/* The hamburger carried `outline: none !important`, which left keyboard users
+   with no way to tell it had focus, and the rest of the site relied on whatever
+   the UA happened to draw -- a thin default ring that all but disappears
+   against the tinted section backgrounds.
+
+   :focus-visible rather than :focus, so the ring appears for keyboard and
+   assistive-tech focus but not on mouse clicks, which is what the original
+   author was almost certainly trying to suppress. The two-tone outline keeps it
+   legible on both the white and #f5f8fd backgrounds. */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:not([tabindex="-1"]):focus-visible {
+  outline: 3px solid #0563bb;
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Inside the nav rail the pill is already brand blue when focused, so a blue
+   ring on blue would vanish. Switch to the dark ink colour there. */
+.nav-menu a:focus-visible,
+.mobile-nav-toggle:focus-visible {
+  outline-color: #2b3742;
+}
+
+/*--------------------------------------------------------------
+# Skip link
+--------------------------------------------------------------*/
+/* Off screen until it takes focus, rather than display:none, which would drop
+   it out of the tab order and defeat the point. It has to clear the fixed nav
+   rail and the hamburger, both of which sit at the top-left and top-right.
+
+   Deliberately no transition on `top`. A transitioned property only advances
+   while the page is producing animation frames, and this was observed staying
+   stuck at -60px -- focused but invisible -- on a tab that had stopped
+   painting. For a control whose entire purpose is to appear the moment it
+   takes focus, that failure mode is not worth a 200ms slide. */
+.skip-link {
+  position: absolute;
+  left: 8px;
+  top: -60px;
+  z-index: 10000;
+  padding: 10px 18px;
+  border-radius: 0 0 4px 4px;
+  background: #0563bb;
+  color: #fff;
+  font-size: 15px;
+  text-decoration: none;
+}
+
+.skip-link:focus {
+  top: 0;
+  color: #fff;
+  outline: 3px solid #2b3742;
+  outline-offset: 2px;
+}
+
+/* #main takes tabindex="-1" so focus really lands there when the link is
+   followed. Without this some browsers scroll but leave focus behind, and the
+   next Tab drops the user straight back into the nav they just skipped. */
+#main:focus {
+  outline: none;
 }
 
 /*--------------------------------------------------------------
@@ -256,6 +403,14 @@ h6 {
   #main > section {
     padding-left: 100px;
   }
+
+  /* The hero is now a child of #main so that landmark navigation reaches the
+     name and job title, which previously sat outside every landmark. That put
+     it in range of the rule above, whose `#main > section` specificity beats a
+     bare `#hero`, so its wider offset has to be restated at matching weight. */
+  #main > #hero {
+    padding-left: 160px;
+  }
 }
 
 /*--------------------------------------------------------------
@@ -342,7 +497,6 @@ h6 {
   background: none;
   font-size: 24px;
   transition: all 0.4s;
-  outline: none !important;
   line-height: 1;
   cursor: pointer;
   text-align: right;
@@ -607,7 +761,10 @@ section {
   margin-bottom: 10px;
 }
 
-.resume .resume-item h5 {
+/* Dates and subtitles, not headings. They were <h5> purely for the styling,
+   which put seven fake entries into the document outline that a screen reader
+   user navigating by heading had to step through to reach the real content. */
+.resume .resume-item .resume-meta {
   font-size: 16px;
   background: #f7f8f9;
   padding: 5px 15px;

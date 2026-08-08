@@ -28,6 +28,24 @@
     return String(e);
   }
 
+  // Writes a short sentence into the polite live region on the page. Every tool
+  // renders its result into a panel that a screen reader has no reason to
+  // re-read, so without this the buttons are silent: press Format, hear
+  // nothing, and there is no way to tell success from failure.
+  //
+  // Re-setting identical text does not re-announce in most screen readers, so a
+  // repeated action (formatting twice) clears the node first to force it.
+  let statusTimer = null;
+  function announce(message) {
+    const region = document.getElementById("toolStatus");
+    if (!region) return;
+    clearTimeout(statusTimer);
+    region.textContent = "";
+    statusTimer = setTimeout(() => {
+      region.textContent = message;
+    }, 60);
+  }
+
   function debounce(func, wait) {
     let timeout;
     return function (...args) {
@@ -61,6 +79,7 @@
       const originalText = btn.innerText;
       btn.innerText = "Copied!";
       btn.disabled = true; // Disable to prevent spamming
+      announce("Copied to clipboard.");
       setTimeout(() => {
         btn.innerText = originalText;
         btn.disabled = false;
@@ -208,6 +227,9 @@
         copyBtn.disabled = false;
         if (downloadBtn) downloadBtn.disabled = false;
         formatJsonTask = null;
+        // Announced from here rather than after renderChunk() is first called,
+        // because large documents finish across several animation frames.
+        announce("JSON formatted, " + lines.length + " lines.");
       }
       renderChunk();
     } catch (e) {
@@ -215,6 +237,7 @@
       output.style.borderColor = "red";
       copyBtn.disabled = true;
       if (downloadBtn) downloadBtn.disabled = true;
+      announce("Invalid JSON. " + errorText(e));
     }
   }
 
@@ -682,6 +705,13 @@
         document.getElementById("diffCount").textContent = "0/" + changes.length;
       }
       updateDiffButtons(-1, changes.length);
+      announce(
+        changes.length === 0
+          ? "Comparison complete. The two documents are identical."
+          : "Comparison complete, " +
+              changes.length +
+              (changes.length === 1 ? " difference." : " differences."),
+      );
     }
 
     renderChunk();
@@ -834,18 +864,25 @@
       // be left standing where it reads as a verdict on this one.
       verificationStatus.textContent = "";
 
+      // The verdict is conveyed visually by colour and an icon, neither of
+      // which reaches a screen reader, so each branch also announces in words.
+      // This is the one result on the page where silence could be read as
+      // success, so it matters more here than anywhere else.
       const verified = () => {
         verificationStatus.innerHTML =
           '<span class="text-success"><i class="bx bx-check-circle"></i> Signature Verified</span>';
+        announce("Token decoded. Signature verified.");
       };
       const invalid = () => {
         verificationStatus.innerHTML =
           '<span class="text-danger"><i class="bx bx-x-circle"></i> Invalid Signature</span>';
+        announce("Token decoded. Invalid signature.");
       };
       // alg comes straight out of an untrusted token, so it is escaped before
       // it ever reaches innerHTML.
       const needs = (what) => {
         verificationStatus.innerHTML = `<span class="text-warning"><i class="bx bx-error"></i> ${escapeHtml(what)}</span>`;
+        announce("Token decoded. " + what);
       };
 
       if (parts.length !== 3 || !parts[2]) {
@@ -999,10 +1036,12 @@
       output.value = CryptoJS.enc.Base64.stringify(wordArray);
       output.style.borderColor = "#ced4da";
       copyBtn.disabled = false;
+      announce("Encoded to Base64.");
     } catch (e) {
       output.value = "Error: " + e.message;
       output.style.borderColor = "red";
       copyBtn.disabled = true;
+      announce("Base64 encoding failed. " + errorText(e));
     }
   }
 
@@ -1016,10 +1055,12 @@
       if (!output.value && input) throw new Error("Invalid Base64 or not UTF-8");
       output.style.borderColor = "#ced4da";
       copyBtn.disabled = false;
+      announce("Decoded from Base64.");
     } catch (e) {
       output.value = "Error: " + e.message;
       output.style.borderColor = "red";
       copyBtn.disabled = true;
+      announce("Base64 decoding failed. " + errorText(e));
     }
   }
 
@@ -1033,10 +1074,12 @@
       output.value = encodeURIComponent(input);
       output.style.borderColor = "#ced4da";
       copyBtn.disabled = false;
+      announce("URL encoded.");
     } catch (e) {
       output.value = "Error: " + e.message;
       output.style.borderColor = "red";
       copyBtn.disabled = true;
+      announce("URL encoding failed. " + errorText(e));
     }
   }
 
@@ -1048,10 +1091,12 @@
       output.value = decodeURIComponent(input);
       output.style.borderColor = "#ced4da";
       copyBtn.disabled = false;
+      announce("URL decoded.");
     } catch (e) {
       output.value = "Error: " + e.message;
       output.style.borderColor = "red";
       copyBtn.disabled = true;
+      announce("URL decoding failed. " + errorText(e));
     }
   }
 
@@ -1076,12 +1121,14 @@
       output.style.borderColor = "#ced4da";
       copyBtn.disabled = false;
       if (downloadBtn) downloadBtn.disabled = false;
+      announce("Converted YAML to JSON.");
       output.scrollIntoView({ behavior: "smooth", block: "start" });
     } catch (e) {
       output.textContent = "Error converting YAML to JSON: " + e.message;
       output.style.borderColor = "red";
       copyBtn.disabled = true;
       if (downloadBtn) downloadBtn.disabled = true;
+      announce("YAML to JSON conversion failed. " + errorText(e));
       output.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   }
@@ -1105,12 +1152,14 @@
       output.style.borderColor = "#ced4da";
       copyBtn.disabled = false;
       if (downloadBtn) downloadBtn.disabled = false;
+      announce("Converted JSON to YAML.");
       output.scrollIntoView({ behavior: "smooth", block: "start" });
     } catch (e) {
       output.textContent = "Error converting JSON to YAML: " + e.message;
       output.style.borderColor = "red";
       copyBtn.disabled = true;
       if (downloadBtn) downloadBtn.disabled = true;
+      announce("JSON to YAML conversion failed. " + errorText(e));
       output.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   }

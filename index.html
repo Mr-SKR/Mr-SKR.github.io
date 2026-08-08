@@ -158,6 +158,11 @@
 </head>
 
 <body>
+  <!-- First thing in the tab order: every page puts six nav links
+       before the content, and this lets a keyboard user step past
+       them. Visually hidden until focused. -->
+  <a class="skip-link" href="#main">Skip to main content</a>
+
   <!-- ======= Mobile nav toggle button ======= -->
   <button type="button" class="mobile-nav-toggle" aria-label="Toggle navigation" aria-expanded="false" aria-controls="header">
     <i class="bx bx-menu" aria-hidden="true"></i>
@@ -168,22 +173,22 @@
     <nav class="nav-menu" aria-label="Main navigation">
       <ul>
         <li class="active">
-          <a href="#hero"><i class="bx bx-home" aria-hidden="true"></i> <span>Home</span></a>
+          <a href="#hero" aria-label="Home"><i class="bx bx-home" aria-hidden="true"></i> <span>Home</span></a>
         </li>
         <li>
-          <a href="#about"><i class="bx bx-user" aria-hidden="true"></i> <span>About</span></a>
+          <a href="#about" aria-label="About"><i class="bx bx-user" aria-hidden="true"></i> <span>About</span></a>
         </li>
         <li>
-          <a href="#skills"><i class="bx bx-book-content" aria-hidden="true"></i> <span>Skills</span></a>
+          <a href="#skills" aria-label="Skills"><i class="bx bx-book-content" aria-hidden="true"></i> <span>Skills</span></a>
         </li>
         <li>
-          <a href="#resume"><i class="bx bx-file-blank" aria-hidden="true"></i> <span>Resume</span></a>
+          <a href="#resume" aria-label="Resume"><i class="bx bx-file-blank" aria-hidden="true"></i> <span>Resume</span></a>
         </li>
         <li>
-          <a href="tools.html"><i class="bx bx-wrench" aria-hidden="true"></i> <span>Tools</span></a>
+          <a href="tools.html" aria-label="Tools"><i class="bx bx-wrench" aria-hidden="true"></i> <span>Tools</span></a>
         </li>
         <li>
-          <a href="games.html"><i class="bx bx-joystick" aria-hidden="true"></i> <span>Games</span></a>
+          <a href="games.html" aria-label="Games"><i class="bx bx-joystick" aria-hidden="true"></i> <span>Games</span></a>
         </li>
       </ul>
     </nav>
@@ -191,25 +196,24 @@
   </header>
   <!-- End Header -->
 
-  <section id="hero" class="d-flex flex-column justify-content-center">
-    <div class="container" data-aos="zoom-in" data-aos-delay="100">
-      <h1>Suresh Reddy</h1>
-      <p>
-        I'm
-        <span class="typed"
-          data-typed-items="a Full Stack developer, an AWS Certified Professional, a part time traveller"></span>
-      </p>
-      <div class="social-links">
-        <a href="https://github.com/Mr-SKR" class="github" aria-label="GitHub" target="_blank" rel="noopener"><i class="bx bxl-github" aria-hidden="true"></i></a>
-        <a href="https://www.linkedin.com/in/suresh-kumar-reddy/" class="linkedin" aria-label="LinkedIn" target="_blank" rel="noopener"><i
-            class="bx bxl-linkedin"></i></a>
-        <a href="https://www.instagram.com/suresh.kumar.reddy/" class="instagram" aria-label="Instagram" target="_blank" rel="noopener"><i
-            class="bx bxl-instagram"></i></a>
+  <main id="main" tabindex="-1">
+    <section id="hero" class="d-flex flex-column justify-content-center">
+      <div class="container" data-aos="zoom-in" data-aos-delay="100">
+        <h1>Suresh Reddy</h1>
+        <p>
+          I'm
+          <span class="typed"
+            data-typed-items="a Full Stack developer, an AWS Certified Professional, a part time traveller"></span>
+        </p>
+        <div class="social-links">
+          <a href="https://github.com/Mr-SKR" class="github" aria-label="GitHub" target="_blank" rel="noopener"><i class="bx bxl-github" aria-hidden="true"></i></a>
+          <a href="https://www.linkedin.com/in/suresh-kumar-reddy/" class="linkedin" aria-label="LinkedIn" target="_blank" rel="noopener"><i
+              class="bx bxl-linkedin"></i></a>
+          <a href="https://www.instagram.com/suresh.kumar.reddy/" class="instagram" aria-label="Instagram" target="_blank" rel="noopener"><i
+              class="bx bxl-instagram"></i></a>
+        </div>
       </div>
-    </div>
-  </section>
-
-  <main id="main">
+    </section>
     <!-- ======= About Section ======= -->
     <section id="about" class="about">
       <div class="container" data-aos="fade-up">
@@ -438,7 +442,7 @@
                 Staff Software Engineer @
                 <a href="https://www.pingidentity.com/" target="_blank" rel="noopener">Ping Identity</a>
               </h4>
-              <h5>January, 2023 - Present</h5>
+              <p class="resume-meta">January, 2023 - Present</p>
               <p><a href="https://share.google/fDvFQiXjzveIHIV4h" target="_blank" rel="noopener"><i class="bx bx-map" aria-hidden="true"></i><em> Global
                     Technology Park, Bengaluru, India </em></a></p>
               <ul>
@@ -476,7 +480,7 @@
                 Software Engineer III @
                 <a href="https://www.cerner.com/" target="_blank" rel="noopener">Oracle Cerner</a>
               </h4>
-              <h5>November, 2021 - December, 2022</h5>
+              <p class="resume-meta">November, 2021 - December, 2022</p>
               <p><a href="https://maps.app.goo.gl/fLpfqt8tqZ82mrbq9" target="_blank" rel="noopener"><i class="bx bx-map" aria-hidden="true"></i><em>
                     Manyata Tech Park, Bengaluru, India </em></a></p>
               <ul>
@@ -508,7 +512,7 @@
                 Senior Cloud Engineer @
                 <a href="https://www.thomsonreuters.com/">Thomson Reuters</a>
               </h4>
-              <h5>June, 2018 - October, 2021</h5>
+              <p class="resume-meta">June, 2018 - October, 2021</p>
               <p><a href="https://share.google/xwMdgCmXUxKQlMftA" target="_blank" rel="noopener"><i class="bx bx-map" aria-hidden="true"></i><em>
                     DivyaSree Technopolis, Bengaluru, India </em></a></p>
               <ul>
@@ -557,7 +561,7 @@
               <h4>
                 Intern @ <a href="https://www.ellucian.com/">Ellucian</a>
               </h4>
-              <h5>January - April, 2018</h5>
+              <p class="resume-meta">January - April, 2018</p>
               <p><a href="https://share.google/7B8jEVH1zThrIkxmU" target="_blank" rel="noopener"><i class="bx bx-map" aria-hidden="true"></i><em> RMZ
                     Ecoworld, Bengaluru, India </em></a></p>
               <ul>
@@ -577,7 +581,7 @@
             <h3 class="resume-title">Side Projects</h3>
             <div class="resume-item">
               <h4>Food Lovers Database (FLDb)</h4>
-              <h5>Restaurant finder web application</h5>
+              <p class="resume-meta">Restaurant finder web application</p>
               <p>
                 <em><a href="https://foodloversdatabase.com" target="_blank" rel="noopener">
                     <i class="bx bx-world" aria-hidden="true"></i>
@@ -625,7 +629,7 @@
             <h3 class="resume-title">Education</h3>
             <div class="resume-item">
               <h4>Bachelor's in Information Science Engineering</h4>
-              <h5>2014 - 2018</h5>
+              <p class="resume-meta">2014 - 2018</p>
               <p>
                 <em><a href="https://www.cmrit.ac.in/" target="_blank" rel="noopener">
                     <i class="bx bx-world" aria-hidden="true"></i>
@@ -640,7 +644,7 @@
             </div>
             <div class="resume-item">
               <h4>Pre - University College</h4>
-              <h5>2012 - 2014</h5>
+              <p class="resume-meta">2012 - 2014</p>
               <p>
                 <em><a href="http://sjpuc.in/" target="_blank" rel="noopener">
                     <i class="bx bx-world" aria-hidden="true"></i>

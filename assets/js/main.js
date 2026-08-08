@@ -1,6 +1,20 @@
 !(function ($) {
   "use strict";
 
+  // Someone who has asked their OS to reduce motion should not be given a
+  // 1.5-second easing scroll or text that types itself out on a loop. CSS
+  // handles the transitions and animations; these are the parts only JS can
+  // switch off. Read once rather than watched, since none of the effects below
+  // are re-created after load.
+  var prefersReducedMotion =
+    window.matchMedia &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // Jumping straight to the target is the reduced-motion equivalent of the
+  // eased scroll below, not a degraded version of it.
+  var scrollDuration = prefersReducedMotion ? 0 : 1500;
+  var scrollEasing = prefersReducedMotion ? "swing" : "easeInOutExpo";
+
   // Preloader
   $(window).on("load", function () {
     if ($("#preloader").length) {
@@ -16,13 +30,19 @@
   if ($(".typed").length) {
     var typed_strings = $(".typed").data("typed-items");
     typed_strings = typed_strings.split(",");
-    new Typed(".typed", {
-      strings: typed_strings,
-      loop: true,
-      typeSpeed: 50,
-      backSpeed: 25,
-      backDelay: 2000,
-    });
+    if (prefersReducedMotion) {
+      // The looping cursor is the problem, not the words. Show the first
+      // string outright so the hero still reads as a sentence.
+      $(".typed").text(typed_strings[0].trim());
+    } else {
+      new Typed(".typed", {
+        strings: typed_strings,
+        loop: true,
+        typeSpeed: 50,
+        backSpeed: 25,
+        backDelay: 2000,
+      });
+    }
   }
 
   // Smooth scroll for the navigation menu and links with .scrollto classes
@@ -42,8 +62,8 @@
           {
             scrollTop: scrollto,
           },
-          1500,
-          "easeInOutExpo"
+          scrollDuration,
+          scrollEasing
         );
 
         if ($(this).parents(".nav-menu, .mobile-nav").length) {
@@ -81,8 +101,8 @@
           {
             scrollTop: scrollto,
           },
-          1500,
-          "easeInOutExpo"
+          scrollDuration,
+          scrollEasing
         );
       }
     }
@@ -160,8 +180,8 @@
       {
         scrollTop: 0,
       },
-      1500,
-      "easeInOutExpo"
+      scrollDuration,
+      scrollEasing
     );
     return false;
   });
@@ -175,6 +195,12 @@
       AOS.init({
         duration: 1000,
         once: true,
+        // Still initialised rather than skipped. AOS's disable path strips the
+        // data-aos attributes outright (verified in aos.js), which stops the
+        // bundled `[data-aos^=fade]{opacity:0}` rule from matching and leaves
+        // the content plainly visible. Never calling init at all would leave
+        // those attributes in place and the page blank.
+        disable: prefersReducedMotion,
       });
     } catch (e) {
       console.error("AOS failed to initialise:", e);

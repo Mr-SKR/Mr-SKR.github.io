@@ -55,6 +55,11 @@
 </head>
 
 <body>
+  <!-- First thing in the tab order: every page puts six nav links
+       before the content, and this lets a keyboard user step past
+       them. Visually hidden until focused. -->
+  <a class="skip-link" href="#main">Skip to main content</a>
+
   <!-- ======= Mobile nav toggle button ======= -->
   <button type="button" class="mobile-nav-toggle" aria-label="Toggle navigation" aria-expanded="false" aria-controls="header">
     <i class="bx bx-menu" aria-hidden="true"></i>
@@ -65,22 +70,22 @@
     <nav class="nav-menu" aria-label="Main navigation">
       <ul>
         <li>
-          <a href="index.html"><i class="bx bx-home" aria-hidden="true"></i> <span>Home</span></a>
+          <a href="index.html" aria-label="Home"><i class="bx bx-home" aria-hidden="true"></i> <span>Home</span></a>
         </li>
         <li>
-          <a href="index.html#about"><i class="bx bx-user" aria-hidden="true"></i> <span>About</span></a>
+          <a href="index.html#about" aria-label="About"><i class="bx bx-user" aria-hidden="true"></i> <span>About</span></a>
         </li>
         <li>
-          <a href="index.html#skills"><i class="bx bx-book-content" aria-hidden="true"></i> <span>Skills</span></a>
+          <a href="index.html#skills" aria-label="Skills"><i class="bx bx-book-content" aria-hidden="true"></i> <span>Skills</span></a>
         </li>
         <li>
-          <a href="index.html#resume"><i class="bx bx-file-blank" aria-hidden="true"></i> <span>Resume</span></a>
+          <a href="index.html#resume" aria-label="Resume"><i class="bx bx-file-blank" aria-hidden="true"></i> <span>Resume</span></a>
         </li>
         <li>
-          <a href="tools.html"><i class="bx bx-wrench" aria-hidden="true"></i> <span>Tools</span></a>
+          <a href="tools.html" aria-label="Tools"><i class="bx bx-wrench" aria-hidden="true"></i> <span>Tools</span></a>
         </li>
         <li>
-          <a href="games.html"><i class="bx bx-joystick" aria-hidden="true"></i> <span>Games</span></a>
+          <a href="games.html" aria-label="Games"><i class="bx bx-joystick" aria-hidden="true"></i> <span>Games</span></a>
         </li>
       </ul>
     </nav>
@@ -88,7 +93,7 @@
   </header>
   <!-- End Header -->
 
-  <main id="main">
+  <main id="main" tabindex="-1">
     <section id="notfound" class="section-bg">
       <div class="container">
         <div class="section-title">

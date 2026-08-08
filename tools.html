@@ -153,6 +153,14 @@
             width: 100%;
         }
 
+        /* Stands in for a <label> on the read-only outputs, which are <pre>/<div>
+           elements that a <label for> may not legally target. Same box as
+           Bootstrap's label so nothing shifts. */
+        .control-label {
+            display: inline-block;
+            margin-bottom: 0.5rem;
+        }
+
         .privacy-note {
             max-width: 760px;
             margin: 0 auto 1.75rem;
@@ -300,6 +308,11 @@
 </head>
 
 <body>
+    <!-- First thing in the tab order: every page puts six nav links
+         before the content, and this lets a keyboard user step past
+         them. Visually hidden until focused. -->
+    <a class="skip-link" href="#main">Skip to main content</a>
+
     <!-- ======= Mobile nav toggle button ======= -->
     <button type="button" class="mobile-nav-toggle" aria-label="Toggle navigation" aria-expanded="false" aria-controls="header">
         <i class="bx bx-menu" aria-hidden="true"></i>
@@ -310,22 +323,22 @@
         <nav class="nav-menu" aria-label="Main navigation">
             <ul>
                 <li>
-                    <a href="index.html"><i class="bx bx-home" aria-hidden="true"></i> <span>Home</span></a>
+                    <a href="index.html" aria-label="Home"><i class="bx bx-home" aria-hidden="true"></i> <span>Home</span></a>
                 </li>
                 <li>
-                    <a href="index.html#about"><i class="bx bx-user" aria-hidden="true"></i> <span>About</span></a>
+                    <a href="index.html#about" aria-label="About"><i class="bx bx-user" aria-hidden="true"></i> <span>About</span></a>
                 </li>
                 <li>
-                    <a href="index.html#skills"><i class="bx bx-book-content" aria-hidden="true"></i> <span>Skills</span></a>
+                    <a href="index.html#skills" aria-label="Skills"><i class="bx bx-book-content" aria-hidden="true"></i> <span>Skills</span></a>
                 </li>
                 <li>
-                    <a href="index.html#resume"><i class="bx bx-file-blank" aria-hidden="true"></i> <span>Resume</span></a>
+                    <a href="index.html#resume" aria-label="Resume"><i class="bx bx-file-blank" aria-hidden="true"></i> <span>Resume</span></a>
                 </li>
                 <li class="active">
-                    <a href="tools.html"><i class="bx bx-wrench" aria-hidden="true"></i> <span>Tools</span></a>
+                    <a href="tools.html" aria-label="Tools"><i class="bx bx-wrench" aria-hidden="true"></i> <span>Tools</span></a>
                 </li>
                 <li>
-                    <a href="games.html"><i class="bx bx-joystick" aria-hidden="true"></i> <span>Games</span></a>
+                    <a href="games.html" aria-label="Games"><i class="bx bx-joystick" aria-hidden="true"></i> <span>Games</span></a>
                 </li>
             </ul>
         </nav>
@@ -333,7 +346,7 @@
     </header>
     <!-- End Header -->
 
-    <main id="main">
+    <main id="main" tabindex="-1">
         <!-- ======= Tools Section ======= -->
         <section id="tools" class="tools section-bg">
             <div class="container" data-aos="fade-up">
@@ -354,32 +367,41 @@
                     page, and it keeps working with the network switched off.
                 </p>
 
+                <!-- Every tool writes its result straight into a panel, which a
+                     screen reader has no reason to revisit, so pressing Format
+                     or Decode appeared to do nothing at all. Announcements go
+                     here instead of putting aria-live on the outputs
+                     themselves: those can hold thousands of lines of JSON, and
+                     a live region would read the whole document aloud on every
+                     keystroke. Short status sentences are what is useful. -->
+                <p id="toolStatus" class="sr-only" role="status" aria-live="polite"></p>
+
                 <ul class="nav nav-tabs" id="toolsTabs" role="tablist">
-                    <li class="nav-item">
+                    <li class="nav-item" role="presentation">
                         <a class="nav-link active" id="json-tab" data-toggle="tab" href="#json" role="tab"
                             aria-controls="json" aria-selected="true">JSON Formatter</a>
                     </li>
-                    <li class="nav-item">
+                    <li class="nav-item" role="presentation">
                         <a class="nav-link" id="diff-tab" data-toggle="tab" href="#diff" role="tab" aria-controls="diff"
                             aria-selected="false">JSON Diff</a>
                     </li>
-                    <li class="nav-item">
+                    <li class="nav-item" role="presentation">
                         <a class="nav-link" id="jwt-tab" data-toggle="tab" href="#jwt" role="tab" aria-controls="jwt"
                             aria-selected="false">JWT Decoder</a>
                     </li>
-                    <li class="nav-item">
+                    <li class="nav-item" role="presentation">
                         <a class="nav-link" id="jwt-encode-tab" data-toggle="tab" href="#jwt-encode" role="tab"
                             aria-controls="jwt-encode" aria-selected="false">JWT Encoder</a>
                     </li>
-                    <li class="nav-item">
+                    <li class="nav-item" role="presentation">
                         <a class="nav-link" id="base64-tab" data-toggle="tab" href="#base64" role="tab"
                             aria-controls="base64" aria-selected="false">Base64</a>
                     </li>
-                    <li class="nav-item">
+                    <li class="nav-item" role="presentation">
                         <a class="nav-link" id="url-tab" data-toggle="tab" href="#url" role="tab" aria-controls="url"
                             aria-selected="false">URL Encoder/Decoder</a>
                     </li>
-                    <li class="nav-item">
+                    <li class="nav-item" role="presentation">
                         <a class="nav-link" id="yaml-json-tab" data-toggle="tab" href="#yaml-json" role="tab"
                             aria-controls="yaml-json" aria-selected="false">YAML &lt;&gt; JSON</a>
                     </li>
@@ -411,7 +433,7 @@
                             <div class="row align-items-center">
                                 <div class="col-lg-4 col-md-12 mb-2 mb-lg-0 d-flex align-items-center">
                                     <button class="btn btn-primary mr-2" data-action="format">Format</button>
-                                    <select class="custom-select" id="jsonIndent" style="width: auto;">
+                                    <select class="custom-select" id="jsonIndent" style="width: auto;" aria-label="Indentation">
                                         <option value="2">2 Spaces</option>
                                         <option value="4" selected>4 Spaces</option>
                                         <option value="tab">Tab</option>
@@ -438,8 +460,8 @@
                             </div>
                         </div>
                         <div class="form-group">
-                            <label for="jsonOutput">Formatted JSON</label>
-                            <pre class="form-control h-auto" id="jsonOutput"
+                            <span class="control-label" id="jsonOutputLabel">Formatted JSON</span>
+                            <pre class="form-control h-auto" id="jsonOutput" tabindex="0" role="group" aria-labelledby="jsonOutputLabel"
                                 style="min-height: 100px; background-color: #e9ecef;"></pre>
                         </div>
                     </div>
@@ -531,8 +553,8 @@
                             </div>
                         </div>
                         <div class="form-group">
-                            <label>Difference</label>
-                            <div class="form-control h-auto" id="diffOutput"
+                            <span class="control-label" id="diffOutputLabel">Difference</span>
+                            <div class="form-control h-auto" id="diffOutput" tabindex="0" role="group" aria-labelledby="diffOutputLabel"
                                 style="min-height: 100px; background-color: #e9ecef; padding: 0; overflow-x: hidden;">
                             </div>
                         </div>
@@ -577,22 +599,22 @@
                             <div class="col-md-6">
                                 <div class="form-group">
                                     <div class="d-flex justify-content-between align-items-center">
-                                        <label for="jwtHeader">Header</label>
+                                        <span class="control-label" id="jwtHeaderLabel">Header</span>
                                         <button class="btn btn-sm btn-outline-secondary mb-2" id="jwtHeaderCopyBtn"
                                             data-action="copy" data-args="jwtHeader" disabled>Copy</button>
                                     </div>
-                                    <pre class="form-control h-auto" id="jwtHeader"
+                                    <pre class="form-control h-auto" id="jwtHeader" tabindex="0" role="group" aria-labelledby="jwtHeaderLabel"
                                         style="min-height: 100px; background-color: #e9ecef;"></pre>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="form-group">
                                     <div class="d-flex justify-content-between align-items-center">
-                                        <label for="jwtPayload">Payload</label>
+                                        <span class="control-label" id="jwtPayloadLabel">Payload</span>
                                         <button class="btn btn-sm btn-outline-secondary mb-2" id="jwtPayloadCopyBtn"
                                             data-action="copy" data-args="jwtPayload" disabled>Copy</button>
                                     </div>
-                                    <pre class="form-control h-auto" id="jwtPayload"
+                                    <pre class="form-control h-auto" id="jwtPayload" tabindex="0" role="group" aria-labelledby="jwtPayloadLabel"
                                         style="min-height: 100px; background-color: #e9ecef;"></pre>
                                 </div>
                             </div>
@@ -780,8 +802,8 @@
                             </div>
                         </div>
                         <div class="form-group">
-                            <label for="yamlJsonOutput">Output</label>
-                            <pre class="form-control h-auto" id="yamlJsonOutput"
+                            <span class="control-label" id="yamlJsonOutputLabel">Output</span>
+                            <pre class="form-control h-auto" id="yamlJsonOutput" tabindex="0" role="group" aria-labelledby="yamlJsonOutputLabel"
                                 style="min-height: 100px; background-color: #e9ecef;"></pre>
                         </div>
                     </div>
