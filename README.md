@@ -1,13 +1,13 @@
-# sureshreddy.xyz
+# sureshreddy.com
 
 Source for my personal site, served from GitHub Pages at
-**[sureshreddy.xyz](https://sureshreddy.xyz)**.
+**[sureshreddy.com](https://sureshreddy.com)**.
 
 | Page | What it is |
 | --- | --- |
-| [`/`](https://sureshreddy.xyz) | Portfolio and e-resume |
-| [`/tools.html`](https://sureshreddy.xyz/tools.html) | Browser-based developer tools (JSON, JWT, Base64, URL, YAML) |
-| [`/games.html`](https://sureshreddy.xyz/games.html) | Peer-to-peer Tic-Tac-Toe over WebRTC |
+| [`/`](https://sureshreddy.com) | Portfolio and e-resume |
+| [`/tools.html`](https://sureshreddy.com/tools.html) | Browser-based developer tools (JSON, JWT, Base64, URL, YAML) |
+| [`/games.html`](https://sureshreddy.com/games.html) | Peer-to-peer Tic-Tac-Toe over WebRTC |
 
 Static HTML, CSS and vanilla JS with no build step: clone it and open
 `index.html`, or serve the directory over HTTP to exercise the service worker.

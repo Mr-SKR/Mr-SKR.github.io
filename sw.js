@@ -1,7 +1,7 @@
 // One cache for both precached and runtime-fetched entries. Using two caches
 // would let the precached copy permanently shadow the revalidated one, since
 // caches.match() searches caches in creation order.
-const VERSION = "v9";
+const VERSION = "v10";
 const CACHE = `site-${VERSION}`;
 
 // App shell. Everything else (images, fonts) is cached at runtime on first use.
