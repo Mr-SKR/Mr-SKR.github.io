@@ -1,6 +1,6 @@
 import { AnimatePresence, motion, useReducedMotion, useScroll, useTransform } from "motion/react";
 import { useMemo, useRef, useState } from "react";
-import { DAY_MS, fmtDate, isoDate, parseDate, todayStart } from "../format";
+import { DAY_MS, daysBetween, fmtDate, isoDate, parseDate, todayStart } from "../format";
 import { useTrip } from "../store";
 import { useNow } from "../ui";
 import { Icon } from "./Icon";
@@ -176,7 +176,7 @@ function Countdown() {
   }
 
   const diff = start.getTime() - now;
-  const dayN = Math.floor((todayStart().getTime() - start.getTime()) / DAY_MS) + 1;
+  const dayN = daysBetween(start, todayStart()) + 1;
   const change = (
     <button className="cd-change" onClick={pick}>
       Change date

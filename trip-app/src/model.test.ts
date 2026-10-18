@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { allChoices, applyGoal, blockOf, decodeShare, defaultState, encodeShare, importShare, goalChoices, matchingGoal, metrics, MY_PLAN, quickPick, shareState, suggestions } from "./model";
+import { moneyShort } from "./format";
 
 const st = defaultState();
 
@@ -70,6 +71,27 @@ describe("share links", () => {
     const back = importShare(defaultState(), await decodeShare(await encodeShare(shareState(s))));
     expect(back.choices).toEqual(s.choices);
     expect(metrics(back).cost).toBe(metrics(s).cost);
+    expect(back.edits).toEqual(s.edits);
+  });
+
+  it("drops edits and add-ons that are not real numbers, cards or items", () => {
+    const bad = {
+      v: 2,
+      c: MY_PLAN,
+      a: ["porter", "constructor", "porter", 7],
+      e: {
+        "arr-gop": { flight: "9000", nope: 5 },
+        "arr-ktm": { flight: -1 },
+        "addon:porter": { v: 1200 },
+        "addon:toString": { v: 1 },
+        "no-such-card": { flight: 1 },
+        constructor: null,
+      },
+    } as unknown as Parameters<typeof importShare>[1];
+    const back = importShare(defaultState(), bad);
+    expect(back.addons).toEqual(["porter"]);
+    expect(back.edits).toEqual({ "addon:porter": { v: 1200 } });
+    expect(Number.isFinite(metrics(back).cost)).toBe(true);
   });
 });
 
@@ -118,5 +140,15 @@ describe("goals", () => {
 
   it("every day belongs to a block", () => {
     for (const c of allChoices()) metrics(st, c).flat.forEach((f) => expect(blockOf(f.id), f.id).toBeDefined());
+  });
+});
+
+describe("moneyShort", () => {
+  it("switches unit on the rounded value", () => {
+    expect(moneyShort(950)).toBe("₹950");
+    expect(moneyShort(7500)).toBe("₹7.5K");
+    expect(moneyShort(75700)).toBe("₹76K");
+    expect(moneyShort(99999)).toBe("₹1L");
+    expect(moneyShort(123456)).toBe("₹1.23L");
   });
 });

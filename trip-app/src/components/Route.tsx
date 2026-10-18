@@ -3,16 +3,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { D } from "../data";
 import { dayDate, elev, fmtDate, fmtNum, ft, legSummary, money, moneyShort, npr, photo, routeNames } from "../format";
 import { addonCount, addonUnit, BLOCKS, blockOption, blockShown, dayBlocks, cardCost, goalChoices, GOALS, matchingGoal, metrics, MY_PLAN, myOption, P, type Block, type BlockOption, type Goal } from "../model";
-import { useLocal, useTrip } from "../store";
+import { KEYS, useLocal, useTrip } from "../store";
 import type { Day } from "../types";
-
-// Toasts fire from places that cannot reach the store's undo through props.
-const undoRef: { current: () => void } = { current: () => undefined };
-export function UndoBridge() {
-  const { undo } = useTrip();
-  undoRef.current = undo;
-  return null;
-}
 import { useUI } from "../ui";
 import { Icon } from "./Icon";
 
@@ -140,7 +132,7 @@ const lower = (t: string) => t.charAt(0).toLowerCase() + t.slice(1);
 /* ================================================================== */
 function GoalPanel() {
   const { st, m, update } = useTrip();
-  const [last, setLast] = useLocal<Goal | null>("trip.goal.v4", null);
+  const [last, setLast] = useLocal<Goal | null>(KEYS.goal, null, (raw) => GOALS.find((g) => g.id === raw)?.id ?? null);
   const mine = useMemo(() => metrics(st, MY_PLAN), [st]);
   const active = useMemo(() => matchingGoal(st, last), [st, last]);
   const edited = !active && last && last !== "mine" ? last : null;
@@ -166,8 +158,8 @@ function GoalPanel() {
   return (
     <div className="gp">
       <div className="gp-total">
-        <p className="eyebrow">Per person, in Indian rupees{st.people > 1 ? " · " + st.people + " people: " + moneyShort(st, m.cost * st.people) : ""}</p>
-        <p className="gp-money">{money(st, m.cost)}</p>
+        <p className="eyebrow">Per person, in Indian rupees{st.people > 1 ? " · " + st.people + " people: " + moneyShort(m.cost * st.people) : ""}</p>
+        <p className="gp-money">{money(m.cost)}</p>
         <p className="gp-npr">about {npr(st, m.cost)} in Nepali rupees</p>
         <p className="gp-meta">
           {m.days} days · {fmtNum(m.km)} km on foot · up to {elev(m.maxAlt)}
@@ -293,7 +285,7 @@ function BlockCard({
         {changed && <span className="block-tag tag-changed">Changed</span>}
         <span className="block-when">{when}</span>
         <span className="block-cost">
-          {included ? money(st, data!.cost) : "\u2013"}
+          {included ? money(data!.cost) : "\u2013"}
           {included && <small>{npr(st, data!.cost)}</small>}
         </span>
       </div>
@@ -356,7 +348,7 @@ function Extras() {
   const { st, m, update } = useTrip();
   const ui = useUI();
   const reduce = useReducedMotion();
-  const [open, setOpen] = useLocal("trip.addons.open", true);
+  const [open, setOpen] = useLocal(KEYS.addonsOpen, true);
   const on = st.addons.length;
   const groups = useMemo(() => {
     const out: [string, string[]][] = [];
@@ -375,7 +367,7 @@ function Extras() {
             Add ons
           </h4>
           <p className="muted small">
-            {on ? on + " added · " + money(st, m.addonCost) + " (" + npr(st, m.addonCost) + ") in the total" : "Not in the total until you tick them. Prices per person."}
+            {on ? on + " added · " + money(m.addonCost) + " (" + npr(st, m.addonCost) + ") in the total" : "Not in the total until you tick them. Prices per person."}
           </p>
         </div>
         <button className="block-more" aria-expanded={open} aria-controls="addons-list" onClick={() => setOpen(!open)}>
@@ -419,9 +411,9 @@ function Extras() {
                           </span>
                         </label>
                         <span className="extra-price">
-                          {money(st, u.v * n)}
+                          {money(u.v * n)}
                           <small className="npr-ref">{npr(st, u.v * n)}</small>
-                          <small>{a.per === "trekDay" ? money(st, u.v) + " a walking day × " + n : a.per === "pokharaNight" ? money(st, u.v) + " a night × " + n : "once"}</small>
+                          <small>{a.per === "trekDay" ? money(u.v) + " a walking day × " + n : a.per === "pokharaNight" ? money(u.v) + " a night × " + n : "once"}</small>
                           <button className="link small" onClick={() => ui.open({ kind: "addon", id })} aria-label={"Edit price of " + a.title}>
                             edit
                           </button>
@@ -527,7 +519,7 @@ function DayRow({ f }: { f: Day }) {
       <div className="day-price">
         <span className="price-main">
           {cc.edited && <span className="edited-dot" title="Edited price" />}
-          {money(st, cc.v)}
+          {money(cc.v)}
         </span>
         <small>{npr(st, cc.v)}</small>
       </div>
@@ -539,10 +531,9 @@ function DayDetail({ f }: { f: Day }) {
   const { st, update } = useTrip();
   const ui = useUI();
   const e = st.edits[f.id] || {};
-  const k = 1;
   const setItem = (item: string, v: number, def: number) =>
     update((d) => {
-      const inr = Math.round(v / k);
+      const inr = Math.round(v);
       d.edits[f.id] = d.edits[f.id] || {};
       if (Math.abs(inr - def) < 1) delete d.edits[f.id][item];
       else d.edits[f.id][item] = inr;
@@ -562,7 +553,7 @@ function DayDetail({ f }: { f: Day }) {
                   <td>
                     {it[1]}
                     <span className="range">
-                      usually {moneyShort(st, it[3])} to {moneyShort(st, it[4])}
+                      usually {moneyShort(it[3])} to {moneyShort(it[4])}
                     </span>
                     <InlineLinks links={f.c.costLinks?.[it[0]]} />
                   </td>
@@ -574,17 +565,17 @@ function DayDetail({ f }: { f: Day }) {
                       inputMode="numeric"
                       min={0}
                       step={50}
-                      defaultValue={Math.round(v * k)}
+                      defaultValue={Math.round(v)}
                       aria-label={it[1] + " in Indian rupees"}
                       onBlur={(ev) => {
                         const n = parseFloat(ev.target.value);
-                        if (n >= 0 && Math.round(n) !== Math.round(v * k)) setItem(it[0], n, it[2]);
+                        if (n >= 0 && Math.round(n) !== Math.round(v)) setItem(it[0], n, it[2]);
                       }}
                       onKeyDown={(ev) => ev.key === "Enter" && (ev.target as HTMLInputElement).blur()}
                     />
                     <span className="npr-ref">{npr(st, v)}</span>
                     {edited && (
-                      <button className="icon-btn sm" aria-label={"Reset " + it[1]} title={"Back to " + money(st, it[2])} onClick={() => setItem(it[0], it[2] * k, it[2])}>
+                      <button className="icon-btn sm" aria-label={"Reset " + it[1]} title={"Back to " + money(it[2])} onClick={() => setItem(it[0], it[2], it[2])}>
                         <Icon name="undo" size={14} />
                       </button>
                     )}

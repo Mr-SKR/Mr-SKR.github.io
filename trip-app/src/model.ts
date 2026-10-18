@@ -141,11 +141,34 @@ export function defaultState(): TripState {
     choices: { ...MY_PLAN },
     addons: [],
     edits: {},
-    cur: "INR",
     rate: D.inrToNpr,
     people: 1,
     start: D.defaultStartDate,
   };
+}
+
+/**
+ * Price edits keep only known cards and their cost items, known add ons (as
+ * "addon:<id>" with a single `v`), and finite amounts of zero or more. Anything
+ * else would turn totals into string concatenation or NaN, and then persist.
+ */
+function sanitizeEdits(raw: unknown): TripState["edits"] {
+  const out: TripState["edits"] = {};
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return out;
+  const ok = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n) && n >= 0;
+  for (const [id, e] of Object.entries(raw as Record<string, unknown>)) {
+    if (!e || typeof e !== "object") continue;
+    const items = e as Record<string, unknown>;
+    if (id.startsWith("addon:")) {
+      if (Object.hasOwn(D.addons, id.slice(6)) && ok(items.v)) out[id] = { v: items.v };
+      continue;
+    }
+    if (!Object.hasOwn(D.cards, id)) continue;
+    const keep: Record<string, number> = {};
+    for (const it of D.cards[id].costs) if (ok(items[it[0]])) keep[it[0]] = items[it[0]] as number;
+    if (Object.keys(keep).length) out[id] = keep;
+  }
+  return out;
 }
 
 /** Rebuild a state from untrusted input (storage, share links), keeping only what is valid. */
@@ -162,8 +185,8 @@ export function sanitize(raw: unknown): TripState {
     }
     out.choices = c;
   }
-  if (Array.isArray(st.addons)) out.addons = st.addons.filter((a) => !!D.addons[a]);
-  if (st.edits && typeof st.edits === "object") out.edits = st.edits;
+  if (Array.isArray(st.addons)) out.addons = [...new Set(st.addons.filter((a) => typeof a === "string" && Object.hasOwn(D.addons, a)))];
+  out.edits = sanitizeEdits(st.edits);
   // Prices are always INR now; NPR is shown alongside as a reference.
   if (typeof st.rate === "number" && st.rate > 0) out.rate = st.rate;
   if (typeof st.people === "number" && st.people >= 1) out.people = Math.min(30, Math.floor(st.people));

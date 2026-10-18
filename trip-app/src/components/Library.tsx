@@ -9,8 +9,7 @@ export function AddonPrice({ id }: { id: string }) {
   const { st, update } = useTrip();
   const ui = useUI();
   const a = D.addons[id];
-  const k = 1;
-  const [v, setV] = useState(Math.round(addonUnit(st, id).v * k));
+  const [v, setV] = useState(Math.round(addonUnit(st, id).v));
   return (
     <form
       className="sheet-body form"
@@ -18,7 +17,7 @@ export function AddonPrice({ id }: { id: string }) {
         e.preventDefault();
         update(
           (d) => {
-            d.edits["addon:" + id] = { v: Math.round(v / k) };
+            d.edits["addon:" + id] = { v: Math.round(v) };
             if (!d.addons.includes(id)) d.addons.push(id);
           }
         );
@@ -35,7 +34,7 @@ export function AddonPrice({ id }: { id: string }) {
       </label>
       <p className="muted small">That is about {npr(st, v)} in Nepal.</p>
       <p className="muted small">
-        Typical: {money(st, a.min)} to {money(st, a.max)} ({npr(st, a.min)} to {npr(st, a.max)}).
+        Typical: {money(a.min)} to {money(a.max)} ({npr(st, a.min)} to {npr(st, a.max)}).
       </p>
       <div className="form-actions">
         <button className="btn" type="submit">
@@ -49,7 +48,7 @@ export function AddonPrice({ id }: { id: string }) {
             ui.close();
           }}
         >
-          Reset to {money(st, a.inr)}
+          Reset to {money(a.inr)}
         </button>
       </div>
     </form>

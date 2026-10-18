@@ -94,7 +94,7 @@ export function StickyBar() {
         </ul>
         <div className="bar-right">
           <span className="bar-totals" aria-live="polite">
-            <Ticker value={m.cost} format={(v) => moneyShort(st, v)} />
+            <Ticker value={m.cost} format={(v) => moneyShort(v)} />
             <span className="bar-dim">
               {" · "}
               {m.days} d · {fmtNum(m.maxAlt)} m<span className="bar-ft"> · {ft(m.maxAlt)} ft</span>

@@ -40,8 +40,11 @@ export default defineConfig({
         cleanupOutdatedCaches: true,
         runtimeCaching: [
           {
+            // Photo filenames carry no content hash, so CacheFirst would pin
+            // a replaced photo forever. Serve the cached copy (works offline)
+            // and refresh it in the background.
             urlPattern: ({ url }) => url.pathname.startsWith("/trip/img/"),
-            handler: "CacheFirst",
+            handler: "StaleWhileRevalidate",
             options: { cacheName: "trip-img", expiration: { maxEntries: 80 } },
           },
           {

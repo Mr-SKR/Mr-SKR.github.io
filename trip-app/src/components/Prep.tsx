@@ -1,6 +1,6 @@
 import { motion } from "motion/react";
 import { D } from "../data";
-import { DAY_MS, fmtDate, parseDate, todayStart } from "../format";
+import { addDays, fmtDate, parseDate, todayStart } from "../format";
 import { KEYS, useLocal, useTrip } from "../store";
 
 interface PrepState {
@@ -9,8 +9,25 @@ interface PrepState {
   ms: Record<string, boolean>;
 }
 
+/** Ticks keyed by checklist or milestone id, rebuilt from whatever storage holds. */
+function cleanPrep(raw: unknown): PrepState {
+  const out: PrepState = { done: {}, rent: {}, ms: {} };
+  if (!raw || typeof raw !== "object") return out;
+  const r = raw as Record<string, unknown>;
+  const obj = (x: unknown) => (x && typeof x === "object" ? Object.entries(x as Record<string, unknown>) : []);
+  for (const [k, v] of obj(r.done)) if (v === true) out.done[k] = true;
+  for (const [k, v] of obj(r.rent)) if (v === "own" || v === "rent") out.rent[k] = v;
+  for (const [k, v] of obj(r.ms)) {
+    if (v !== true) continue;
+    // Milestone ticks used to be keyed by position in D.milestones.
+    const id = /^\d+$/.test(k) ? D.milestones[Number(k)]?.id : k;
+    if (id) out.ms[id] = true;
+  }
+  return out;
+}
+
 export function usePrep() {
-  return useLocal<PrepState>(KEYS.prep, { done: {}, rent: {}, ms: {} });
+  return useLocal<PrepState>(KEYS.prep, { done: {}, rent: {}, ms: {} }, cleanPrep);
 }
 
 const daysBefore = (d: number) => (d === 1 ? "the day before" : d + " days before");
@@ -19,14 +36,14 @@ export function PrepSection() {
   const { st, m, update } = useTrip();
   const [prep, setPrep] = usePrep();
   const start = parseDate(st.start);
-  const end = start ? new Date(start.getTime() + (m.days - 1) * DAY_MS) : null;
+  const end = start ? addDays(start, m.days - 1) : null;
   const today = todayStart();
   const items = D.checklist.flatMap((c) => c.items).filter((i) => !i.optional);
   const done = items.filter((i) => prep.done[i.id]).length;
   const pct = Math.round((100 * done) / items.length);
 
   // Earliest first, whatever order the data lists them in.
-  const steps = D.milestones.map((ms, i) => ({ ...ms, i })).sort((a, b) => b.d - a.d);
+  const steps = [...D.milestones].sort((a, b) => b.d - a.d);
 
   const toggle = (id: string, v: boolean) => setPrep({ ...prep, done: { ...prep.done, [id]: v } });
 
@@ -55,18 +72,18 @@ export function PrepSection() {
               )}
             </div>
             <ol className="tl">
-              {steps.map(({ i, ...ms }) => {
-                const isDone = ms.link ? !!prep.done[ms.link] : !!prep.ms[i];
-                const due = start ? new Date(start.getTime() - ms.d * DAY_MS) : null;
+              {steps.map((ms) => {
+                const isDone = ms.link === undefined ? !!prep.ms[ms.id] : !!prep.done[ms.link];
+                const due = start ? addDays(start, -ms.d) : null;
                 const late = !!due && !isDone && due < today;
                 return (
-                  <li key={i} className={(isDone ? "done" : "") + (late ? " late" : "")}>
+                  <li key={ms.link ?? ms.id} className={(isDone ? "done" : "") + (late ? " late" : "")}>
                     <input
                       type="checkbox"
                       className="tick"
                       checked={isDone}
                       aria-label={ms.t}
-                      onChange={(e) => (ms.link ? toggle(ms.link, e.target.checked) : setPrep({ ...prep, ms: { ...prep.ms, [i]: e.target.checked } }))}
+                      onChange={(e) => (ms.link === undefined ? setPrep({ ...prep, ms: { ...prep.ms, [ms.id]: e.target.checked } }) : toggle(ms.link, e.target.checked))}
                     />
                     <div className="tl-body">
                       <span className="tl-when">

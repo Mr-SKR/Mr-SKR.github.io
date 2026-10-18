@@ -79,7 +79,8 @@ export interface TripData {
   cards: Record<string, Card>;
   addons: Record<string, Addon>;
   checklist: { cat: string; rentable?: boolean; items: { id: string; t: string; optional?: boolean }[] }[];
-  milestones: { d: number; t: string; link?: string; optional?: boolean }[];
+  /** Ticks follow `link` (a checklist item) or, failing that, `id`; never the position. */
+  milestones: ({ d: number; t: string; optional?: boolean } & ({ link: string; id?: never } | { id: string; link?: never }))[];
   climate: { base: string; max: number[]; min: number[]; rain: number[] };
   photoCredits: Record<string, [string, string, string]>;
 }
@@ -108,7 +109,6 @@ export interface TripState {
   choices: Choices;
   addons: string[];
   edits: Record<string, Record<string, number>>;
-  cur: "INR" | "NPR";
   rate: number;
   people: number;
   start: string | null;

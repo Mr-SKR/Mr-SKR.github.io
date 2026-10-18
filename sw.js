@@ -68,7 +68,10 @@ self.addEventListener("activate", (event) => {
       .then((names) =>
         Promise.all(
           names
-            .filter((name) => name !== CACHE)
+            // Caches are shared by the whole origin, not scoped like the
+            // worker: /trip/'s workbox caches live here too. Only ever delete
+            // this worker's own old versions.
+            .filter((name) => name.startsWith("site-") && name !== CACHE)
             .map((name) => caches.delete(name)),
         ),
       )

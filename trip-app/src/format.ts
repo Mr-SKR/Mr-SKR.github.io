@@ -16,12 +16,14 @@ export const elev = (m: number) => fmtNum(m) + " m (" + ft(m) + " ft)";
  * reference (via `npr`) for paying on the ground, at the fixed 1 INR = 1.6 NPR
  * peg (or whatever rate the visitor sets).
  */
-export function money(_st: Pick<TripState, "rate">, inr: number) {
+export function money(inr: number) {
   return "₹" + fmtNum(inr);
 }
 
-export function moneyShort(_st: Pick<TripState, "rate">, inr: number) {
-  if (inr >= 100000) return "₹" + parseFloat((inr / 100000).toFixed(2)) + "L";
+/** "₹950", "₹7.5K", "₹76K", "₹1.23L". Decided on the rounded value, so 99,999 is "₹1L", not "₹100K". */
+export function moneyShort(inr: number) {
+  const k = Math.round(inr / 1000);
+  if (k >= 100) return "₹" + k / 100 + "L";
   if (inr >= 1000) return "₹" + parseFloat((inr / 1000).toFixed(inr >= 10000 ? 0 : 1)) + "K";
   return "₹" + Math.round(inr);
 }
@@ -46,9 +48,19 @@ export function isoDate(d: Date) {
   return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
 }
 
+/**
+ * Calendar arithmetic on local dates. Adding multiples of DAY_MS instead
+ * lands an hour off across a daylight-saving change, which is a whole day off
+ * at midnight.
+ */
+export const addDays = (d: Date, n: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+
+/** Whole calendar days from `a` to `b` (both local midnights). */
+export const daysBetween = (a: Date, b: Date) => Math.round((b.getTime() - a.getTime()) / DAY_MS);
+
 export function dayDate(start: string | null, day: number) {
   const s = parseDate(start);
-  return s ? new Date(s.getTime() + (day - 1) * DAY_MS + 3600e3) : null;
+  return s ? addDays(s, day - 1) : null;
 }
 
 export function fmtDate(d: Date, withYear = false) {

@@ -8,7 +8,20 @@ export interface Wx {
   d: Record<string, { t: string[]; hi: number[]; lo: number[]; pr: number[]; sn: number[]; c: number[]; sr: string[] }>;
 }
 
-let current: Wx | null = load<Wx | null>(KEYS.wx, null);
+/** A stored forecast, or null if it is missing or not the shape this build writes. */
+function cleanWx(raw: unknown): Wx | null {
+  if (!raw || typeof raw !== "object") return null;
+  const w = raw as Partial<Wx>;
+  if (typeof w.at !== "number" || !w.d || typeof w.d !== "object") return null;
+  const keys = ["t", "hi", "lo", "pr", "sn", "c", "sr"] as const;
+  const d: Wx["d"] = {};
+  for (const [id, f] of Object.entries(w.d)) {
+    if (Object.hasOwn(D.places, id) && f && keys.every((k) => Array.isArray(f[k]))) d[id] = f;
+  }
+  return { at: w.at, d };
+}
+
+let current: Wx | null = cleanWx(load<unknown>(KEYS.wx, null));
 let busy: Promise<boolean> | null = null;
 const listeners = new Set<() => void>();
 

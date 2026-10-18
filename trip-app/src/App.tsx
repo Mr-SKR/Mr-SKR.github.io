@@ -4,7 +4,7 @@ import { D } from "./data";
 import { AltitudeSection } from "./components/Altitude";
 import { Hero } from "./components/Hero";
 import { PrepSection } from "./components/Prep";
-import { RouteSection, UndoBridge } from "./components/Route";
+import { RouteSection } from "./components/Route";
 import { Sheet } from "./components/Sheet";
 import { StickyBar } from "./components/StickyBar";
 import { P } from "./model";
@@ -41,7 +41,7 @@ function Notices() {
   const { notice, undo } = useTrip();
   const { toast } = useUI();
   useEffect(() => {
-    if (notice) toast(notice, notice.startsWith("Loaded") ? { label: "Undo", run: undo } : undefined);
+    if (notice) toast(notice.msg, notice.undo ? { label: "Undo", run: undo } : undefined);
   }, [notice, toast, undo]);
   return null;
 }
@@ -91,7 +91,6 @@ export default function App() {
   return (
     <TripProvider>
       <UIProvider>
-        <UndoBridge />
         <Notices />
         <Shortcuts />
         <StickyBar />

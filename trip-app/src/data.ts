@@ -2250,10 +2250,12 @@ export const D: TripData = {
     },
     {
       "d": 3,
+      "id": "ms-forecast",
       "t": "Check the forecast and pack with the checklist"
     },
     {
       "d": 1,
+      "id": "ms-offline",
       "t": "Save this page for offline from the ⋯ menu, and charge everything"
     }
   ],
