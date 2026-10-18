@@ -1,0 +1,122 @@
+import { describe, expect, it } from "vitest";
+import { allChoices, applyGoal, blockOf, decodeShare, defaultState, encodeShare, importShare, goalChoices, matchingGoal, metrics, MY_PLAN, quickPick, shareState, suggestions } from "./model";
+
+const st = defaultState();
+
+describe("my plan", () => {
+  it("flies to Kathmandu, spends a day there, flies to Pokhara and comes home via Gorakhpur", () => {
+    const m = metrics(st);
+    expect(m.flat.slice(0, 3).map((f) => f.id)).toEqual(["arr-ktm", "ktm-explore", "pkr-arrive-fly"]);
+    expect(m.flat.at(-1)?.id).toBe("home-gop");
+    expect(m.flat.at(-2)?.id).toBe("pkr-explore");
+    expect(m.cost).toBe(75700);
+    expect(m.days).toBe(14);
+    expect(m.abc).toBe(true);
+    expect(m.breaks).toHaveLength(0);
+  });
+
+  it("the Gorakhpur version is the original document's plan in 13 days: INR 65,000 less repriced food and the Ghandruk night", () => {
+    const m = metrics(st, { ...MY_PLAN, arrive: "gop" });
+    expect(m.cost).toBe(61200);
+    expect(m.days).toBe(13);
+  });
+
+  it("skipping the Kathmandu day saves exactly one day", () => {
+    expect(metrics(st, { ...MY_PLAN, ktmDay: false }).days).toBe(13);
+  });
+
+  it("flags Deurali to ABC as a big altitude jump", () => {
+    const abc = metrics(st).ams.find((a) => a.to === "abc");
+    expect(abc?.lvl).toBe("bad");
+    expect(abc?.gain).toBe(900);
+  });
+});
+
+describe("every combination", () => {
+  it("is a continuous route that reaches ABC", () => {
+    for (const c of allChoices()) {
+      const m = metrics(st, c);
+      expect(m.breaks, JSON.stringify(c)).toHaveLength(0);
+      expect(m.abc).toBe(true);
+    }
+  });
+});
+
+describe("quick picks", () => {
+  const costs = allChoices().map((c) => metrics(st, c));
+
+  it("cheapest really is the lowest cost of all combinations", () => {
+    const m = metrics(st, quickPick(st, "cheapest"));
+    expect(m.cost).toBe(Math.min(...costs.map((x) => x.cost)));
+    expect(m.cost).toBe(49200);
+    expect(m.days).toBe(9);
+  });
+
+  it("shortest really has the fewest days", () => {
+    const m = metrics(st, quickPick(st, "shortest"));
+    expect(m.days).toBe(Math.min(...costs.map((x) => x.days)));
+    expect(m.days).toBe(9);
+  });
+
+  it("follows edited prices: an expensive bus makes Kathmandu the cheaper way in", () => {
+    const pricey = { ...st, edits: { "arr-gop": { bus: 20000 } } };
+    expect(quickPick(pricey, "cheapest").arrive).not.toBe("gop");
+  });
+});
+
+describe("share links", () => {
+  it("round-trips choices, edits and add-ons", async () => {
+    const s = { ...st, choices: { ...MY_PLAN, home: "ktm" as const, ktmDay: false }, addons: ["porter"], edits: { "arr-gop": { flight: 9000 } } };
+    const back = importShare(defaultState(), await decodeShare(await encodeShare(shareState(s))));
+    expect(back.choices).toEqual(s.choices);
+    expect(metrics(back).cost).toBe(metrics(s).cost);
+  });
+});
+
+describe("goals", () => {
+  it("applying every 'spend less' suggestion lands on the true cheapest", () => {
+    const c = applyGoal(st, "cost");
+    expect(metrics(st, c).cost).toBe(metrics(st, quickPick(st, "cheapest")).cost);
+  });
+
+  it("applying every 'fewer days' suggestion lands on the fewest days", () => {
+    expect(metrics(st, applyGoal(st, "days")).days).toBe(metrics(st, quickPick(st, "shortest")).days);
+  });
+
+  it("'spend less' on my plan suggests skipping the optional days", () => {
+    const ids = suggestions(st, "cost").map((s) => s.block.id);
+    expect(ids).toEqual(expect.arrayContaining(["pokhara", "buffer"]));
+    expect(suggestions(st, "cost").every((s) => s.cost < 0)).toBe(true);
+  });
+
+  it("picking a goal sets the plan to it, and the page recognises it", () => {
+    const cheap = { ...st, choices: goalChoices(st, "cost") };
+    expect(metrics(cheap).cost).toBe(49200);
+    expect(matchingGoal(cheap)).toBe("cost");
+    expect(matchingGoal(st)).toBe("mine");
+    expect(matchingGoal({ ...cheap, choices: { ...cheap.choices, buffer: true } })).toBe(null);
+  });
+
+  it("'fewer days' flies via Kathmandu: same days as Gorakhpur, far less time on the road", () => {
+    const fast = goalChoices(st, "days");
+    expect(fast.arrive).toBe("ktm-fly");
+    expect(fast.ktmDay).toBe(false);
+    const viaGop = metrics(st, { ...fast, arrive: "gop" });
+    expect(metrics(st, fast).days).toBe(viaGop.days);
+    expect(metrics(st, fast).travelHours).toBeLessThan(viaGop.travelHours);
+    expect(matchingGoal({ ...st, choices: fast }, "days")).toBe("days");
+  });
+
+  it("goals always start from my plan, whatever was edited before", () => {
+    const edited = { ...st, choices: { ...MY_PLAN, arrive: "ktm-fly" as const, home: "ktm" as const } };
+    expect(goalChoices(edited, "cost")).toEqual(goalChoices(st, "cost"));
+  });
+
+  it("the Machhapuchhre Base Camp night is never part of the plan", () => {
+    for (const c of allChoices()) expect(metrics(st, c).flat.some((f) => f.to === "mbc")).toBe(false);
+  });
+
+  it("every day belongs to a block", () => {
+    for (const c of allChoices()) metrics(st, c).flat.forEach((f) => expect(blockOf(f.id), f.id).toBeDefined());
+  });
+});

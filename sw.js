@@ -1,7 +1,7 @@
 // One cache for both precached and runtime-fetched entries. Using two caches
 // would let the precached copy permanently shadow the revalidated one, since
 // caches.match() searches caches in creation order.
-const VERSION = "v10";
+const VERSION = "v12";
 const CACHE = `site-${VERSION}`;
 
 // App shell. Everything else (images, fonts) is cached at runtime on first use.
@@ -156,6 +156,11 @@ self.addEventListener("fetch", (event) => {
 
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
+
+  // /trip/ is a separate app with its own, more specifically scoped service
+  // worker. Stay out of its way so its files are only ever fetched and cached
+  // when someone actually opens that page.
+  if (url.pathname.startsWith("/trip/")) return;
 
   if (request.mode === "navigate" || CODE_ASSET.test(url.pathname)) {
     event.respondWith(networkFirst(request));

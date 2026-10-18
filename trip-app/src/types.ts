@@ -1,0 +1,159 @@
+export type Mode = "flight" | "bus" | "jeep" | "car" | "trek" | "walk";
+
+/** [from, to, mode, kmMin, kmMax, hoursMin, hoursMax, note?] */
+export type Leg = [string, string, Mode | string, number, number, number, number, string?];
+
+/** [id, label, defaultInr, minInr, maxInr] */
+export type CostItem = [string, string, number, number, number];
+
+export interface Tip {
+  lvl: "warn" | "info";
+  t: string;
+}
+
+export interface Link {
+  label: string;
+  url: string;
+}
+
+export interface Place {
+  name: string;
+  short: string;
+  alt: number;
+  ll: [number, number];
+  map: [number, number];
+  label: "left" | "right" | "top";
+  region: "gateway" | "trek";
+  photo?: string;
+  blurb: string;
+  facts: string[];
+  notes: { stay?: string; network?: string; atm?: string };
+  wiki: string;
+  links?: Link[];
+}
+
+export interface Card {
+  title: string;
+  emoji?: string;
+  type: "transit" | "stay" | "trek" | "rest";
+  from?: string;
+  to?: string;
+  comfort: number;
+  legs: Leg[];
+  costs: CostItem[];
+  tips?: Tip[];
+  links?: Link[];
+  custom?: boolean;
+  /** Links shown inline on a leg, keyed by the leg's index. */
+  legLinks?: Record<string, Link[]>;
+  /** Links shown inline on a cost line, keyed by the cost item id. */
+  costLinks?: Record<string, Link[]>;
+  /** Replaces "sleep N m" when the night is not spent in a bed (an overnight bus). */
+  sleepNote?: string;
+  /** The day really starts the evening before (a night bus); the previous day shows this instead of its sleep. */
+  nightBefore?: string;
+  /** Things to do with the free part of the day. */
+  todo?: string[];
+}
+
+export interface Addon {
+  title: string;
+  emoji?: string;
+  per: "trip" | "trekDay" | "pokharaNight";
+  inr: number;
+  min: number;
+  max: number;
+  comfort: number;
+  note: string;
+  /** Heading the add-on is listed under. */
+  group: string;
+}
+
+export interface TripData {
+  version: number;
+  title: string;
+  defaultStartDate: string | null;
+  inrToNpr: number;
+  places: Record<string, Place>;
+  trailLadder: string[];
+  cards: Record<string, Card>;
+  addons: Record<string, Addon>;
+  checklist: { cat: string; rentable?: boolean; items: { id: string; t: string; optional?: boolean }[] }[];
+  milestones: { d: number; t: string; link?: string; optional?: boolean }[];
+  climate: { base: string; max: number[]; min: number[]; rain: number[] };
+  photoCredits: Record<string, [string, string, string]>;
+}
+
+/** A slot on the board: a swappable stage (g + o) or a single day card (c). */
+export interface Slot {
+  u: string;
+  g?: string;
+  o?: number;
+  c?: string;
+}
+
+/** The handful of decisions the planner offers. Everything else follows from these. */
+export interface Choices {
+  arrive: "gop" | "ktm-bus" | "ktm-fly";
+  pokhara: 1 | 2;
+  pace: "standard" | "fast";
+  down: "slow" | "fast";
+  buffer: boolean;
+  home: "gop" | "ktm";
+  /** A day in Kathmandu before going on to Pokhara (Kathmandu arrivals only). */
+  ktmDay: boolean;
+}
+
+export interface TripState {
+  choices: Choices;
+  addons: string[];
+  edits: Record<string, Record<string, number>>;
+  cur: "INR" | "NPR";
+  rate: number;
+  people: number;
+  start: string | null;
+}
+
+export interface Day {
+  si: number;
+  ci: number;
+  id: string;
+  c: Card;
+  from: string;
+  to: string;
+  day: number;
+  alt: number;
+  gain: number;
+  ams?: "warn" | "bad";
+}
+
+export interface AmsFlag {
+  i: number;
+  day: number;
+  gain: number;
+  to: string;
+  lvl: "warn" | "bad";
+  si: number;
+}
+
+export interface Metrics {
+  flat: Day[];
+  days: number;
+  cost: number;
+  lo: number;
+  hi: number;
+  km: number;
+  /** Hours spent on buses, jeeps and planes (walking not counted). */
+  travelHours: number;
+  maxAlt: number;
+  maxAt: string | null;
+  trekDays: number;
+  pkrNights: number;
+  ams: AmsFlag[];
+  amsScore: number;
+  breaks: { i: number; si: number; from: string; to: string }[];
+  abc: boolean;
+  comfort: number;
+  comfortRaw: number;
+  addonCost: number;
+}
