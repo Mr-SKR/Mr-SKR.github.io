@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { allChoices, applyGoal, blockOf, cardCost, costItems, itemShare, decodeShare, defaultState, encodeShare, importShare, goalChoices, matchingGoal, metrics, MY_PLAN, quickPick, sanitize, shareOf, shareState, suggestions } from "./model";
+import { allChoices, applyGoal, blockOf, addonCost, cardCost, decodeShare, defaultState, encodeShare, importShare, goalChoices, matchingGoal, metrics, MY_PLAN, quickPick, sanitize, shareOf, shareState, suggestions } from "./model";
 import { moneyShort } from "./format";
 
 const st = defaultState();
@@ -40,8 +40,15 @@ describe("groups", () => {
     expect(shareOf(3, 2)).toBeCloseTo(2 / 3);
     expect(shareOf(5, 4)).toBeCloseTo(2 / 5);
     expect(shareOf(7)).toBe(1);
-    expect(shareOf(2, 2, 4 / 3) * 1500).toBeCloseTo(1000);
-    expect(shareOf(3, 2, 4 / 3) * 1500).toBeCloseTo((2000 + 1500) / 3);
+  });
+
+  it("a full room costs its full price, then a part-full one the single price", () => {
+    expect(cardCost({ ...st, people: 3 }, "pkr-explore").v - cardCost({ ...st, people: 2 }, "pkr-explore").v).toBe(Math.round((2000 + 1500) / 3) - 1000);
+  });
+
+  it("an edited room price is the room's price however many share it", () => {
+    const s = { ...st, people: 2, edits: { "pkr-explore": { stay: 3000 } } };
+    expect(cardCost(s, "pkr-explore").v - cardCost({ ...s, people: 1 }, "pkr-explore").v).toBe(-1500);
   });
 
   it("a Pokhara room is ₹1,500 alone and ₹2,000 for two, so each of two pays ₹1,000", () => {
@@ -55,8 +62,8 @@ describe("groups", () => {
   });
 
   it("four people in taxis pay about what one person pays by bus in town", () => {
-    const road = (s: typeof st) => costItems(s, "ktm-explore").filter((it) => it[5]?.road).reduce((t, it) => t + it[2] * itemShare(s.people, it), 0);
-    expect(road({ ...st, people: 4, road: "car" })).toBe(road(st));
+    const roadOnly = { ...st, edits: { "ktm-explore": { stay: 0, food: 0, sights: 0 } } };
+    expect(cardCost({ ...roadOnly, people: 4, road: "car" }, "ktm-explore").v).toBe(cardCost(roadOnly, "ktm-explore").v);
   });
 
   it("counts bus lines by bus and car lines by car, never both", () => {
@@ -73,6 +80,13 @@ describe("groups", () => {
     const two = metrics({ ...base, people: 2 });
     expect(one.addonCost).toBe(2000 * one.trekDays);
     expect(two.addonCost).toBe(1000 * two.trekDays);
+  });
+
+  it("an add on's shown share a day times its days is its total", () => {
+    const m = metrics({ ...st, people: 3, addons: ["porter"] });
+    const c = addonCost({ ...st, people: 3 }, "porter", m);
+    expect(c.each * c.count).toBe(m.addonCost);
+    expect(Number.isInteger(m.cost)).toBe(true);
   });
 
   it("a day's own road choice changes that day only", () => {
@@ -131,6 +145,13 @@ describe("share links", () => {
     expect(back.choices).toEqual(s.choices);
     expect(metrics(back).cost).toBe(metrics(s).cost);
     expect(back.edits).toEqual(s.edits);
+  });
+
+  it("carries the group size and how it gets around, so prices match", async () => {
+    const s = { ...st, people: 4, road: "car" as const, roads: { "arr-ktm": "bus" as const } };
+    const back = importShare(defaultState(), await decodeShare(await encodeShare(shareState(s))));
+    expect([back.people, back.road, back.roads]).toEqual([4, "car", { "arr-ktm": "bus" }]);
+    expect(metrics(back).cost).toBe(metrics(s).cost);
   });
 
   it("drops edits and add-ons that are not real numbers, cards or items", () => {

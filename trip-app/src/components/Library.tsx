@@ -4,7 +4,7 @@ import { money, npr } from "../format";
 import { addonUnit } from "../model";
 import { useTrip } from "../store";
 import { useUI } from "../ui";
-import { RoadPicker } from "./Route";
+import { RoadPicker } from "./RoadPicker";
 
 export function AddonPrice({ id }: { id: string }) {
   const { st, update } = useTrip();

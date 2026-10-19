@@ -231,18 +231,26 @@ export const roadFor = (st: RoadSt, id: string): Road => st.roads[id] ?? st.road
 
 /**
  * Each person's share of something priced per room, vehicle or porter: a
- * group of 3 needs 2 rooms of 2, so each pays 2/3 of a room. `full` is what
- * a full room costs relative to one person in it (1.33 when a ₹1,500 room
- * is ₹2,000 for two); a part-full room is charged at the single price.
+ * group of 3 needs 2 rooms of 2, so each pays 2/3 of a room.
  */
-export function shareOf(people: number, cap?: number, full = 1) {
+export function shareOf(people: number, cap?: number) {
   if (!cap) return 1;
   const n = Math.max(1, people);
-  return (Math.floor(n / cap) * full + (n % cap ? 1 : 0)) / n;
+  return Math.ceil(n / cap) / n;
 }
 
-/** Each person's share of one cost line's price. */
-export const itemShare = (people: number, it: CostItem) => shareOf(people, it[5]?.cap, it[5]?.full ? it[5].full / it[2] : 1);
+/**
+ * Each person's part of one cost line at `price` for one. A full room costs
+ * `full`, the same amount more than for one across the usual range. An edited
+ * price is what the room costs however many share it.
+ */
+export function itemCost(people: number, it: CostItem, price: number, edited = false) {
+  const o = it[5];
+  if (!o?.cap) return price;
+  const full = edited || !o.full ? price : price + o.full - it[2];
+  const n = Math.max(1, people);
+  return (Math.floor(n / o.cap) * full + (n % o.cap ? price : 0)) / n;
+}
 
 /** The cost lines that count for the way the group travels. */
 export function costItems(st: RoadSt, id: string) {
@@ -253,22 +261,26 @@ export function costItems(st: RoadSt, id: string) {
 /** Does this day change with the bus or car choice? */
 export const hasRoadChoice = (id: string) => (card(id)?.costs || []).some((it) => it[5]?.road);
 
-/** Per person: shared rooms and vehicles are split between the people travelling. */
+/**
+ * Per person: shared rooms and vehicles are split between the people
+ * travelling. Each line is rounded to the rupee, so the day is the sum of the
+ * lines shown and the trip the sum of the days.
+ */
 export function cardCost(st: CostSt, id: string) {
   const e = st.edits[id] || {};
   const r = { v: 0, lo: 0, hi: 0, edited: false };
   costItems(st, id).forEach((it) => {
-    const f = itemShare(st.people, it);
     const ed = e[it[0]];
+    const at = (price: number) => Math.round(itemCost(st.people, it, price, ed != null));
     if (ed != null) {
-      r.v += ed * f;
-      r.lo += ed * f;
-      r.hi += ed * f;
+      r.v += at(ed);
+      r.lo += at(ed);
+      r.hi += at(ed);
       r.edited = true;
     } else {
-      r.v += it[2] * f;
-      r.lo += it[3] * f;
-      r.hi += it[4] * f;
+      r.v += at(it[2]);
+      r.lo += at(it[3]);
+      r.hi += at(it[4]);
     }
   });
   return r;
@@ -284,6 +296,19 @@ export function addonUnit(st: Pick<TripState, "edits">, id: string) {
 
 export function addonCount(per: string, m: Pick<Metrics, "trekDays" | "pkrNights">) {
   return per === "trekDay" ? m.trekDays : per === "pokharaNight" ? m.pkrNights : 1;
+}
+
+/**
+ * What one person pays for an add on: their share of one unit, rounded to the
+ * rupee, times how many days or nights it runs, so the shown sum adds up.
+ */
+export function addonCost(st: Pick<TripState, "edits" | "people">, id: string, m: Pick<Metrics, "trekDays" | "pkrNights">) {
+  const a = D.addons[id];
+  const unit = addonUnit(st, id);
+  const split = shareOf(st.people, a.cap);
+  const count = addonCount(a.per, m);
+  const each = (v: number) => Math.round(v * split);
+  return { unit, split, count, each: each(unit.v), v: each(unit.v) * count, lo: each(unit.lo) * count, hi: each(unit.hi) * count };
 }
 
 export function metrics(st: TripState, choices: Choices = st.choices): Metrics & { plan: Plan } {
@@ -348,12 +373,11 @@ export function metrics(st: TripState, choices: Choices = st.choices): Metrics &
   st.addons.forEach((id) => {
     const a = D.addons[id];
     if (!a) return;
-    const u = addonUnit(st, id);
-    const n = addonCount(a.per, m) * shareOf(st.people, a.cap);
-    m.cost += u.v * n;
-    m.lo += u.lo * n;
-    m.hi += u.hi * n;
-    m.addonCost += u.v * n;
+    const c = addonCost(st, id, m);
+    m.cost += c.v;
+    m.lo += c.lo;
+    m.hi += c.hi;
+    m.addonCost += c.v;
     bonus += a.comfort || 0;
   });
   m.comfortRaw = flat.length ? comfortSum / flat.length + bonus : 0;
@@ -423,10 +447,14 @@ export interface ShareV2 {
   c: Choices;
   a: string[];
   e: TripState["edits"];
+  /** Group size and how it gets around, since both change the price each. Older links have none. */
+  p?: number;
+  r?: Road;
+  rs?: TripState["roads"];
 }
 
 export function shareState(st: TripState): ShareV2 {
-  return { v: 2, c: st.choices, a: st.addons, e: st.edits };
+  return { v: 2, c: st.choices, a: st.addons, e: st.edits, p: st.people, r: st.road, rs: st.roads };
 }
 
 const b64u = (bytes: Uint8Array) => {
@@ -465,7 +493,15 @@ export async function decodeShare(code: string): Promise<ShareV2> {
 
 export function importShare(st: TripState, sh: ShareV2): TripState {
   if (!sh || sh.v !== 2) throw new Error("bad share");
-  return sanitize({ ...st, choices: sh.c, addons: sh.a, edits: { ...st.edits, ...(sh.e || {}) } });
+  return sanitize({
+    ...st,
+    people: sh.p ?? st.people,
+    road: sh.r ?? st.road,
+    roads: sh.r ? sh.rs || {} : st.roads,
+    choices: sh.c,
+    addons: sh.a,
+    edits: { ...st.edits, ...(sh.e || {}) },
+  });
 }
 
 /* ================================================================== */
