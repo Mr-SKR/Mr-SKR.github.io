@@ -2,10 +2,10 @@
  * The ABC trek plan as data. Everything the app shows comes from here, so the
  * plan (a price, a new alternative, a story) changes without touching UI code.
  *
- * Costs are per person in INR: [id, label, default, min, max]. Defaults are the
- * figures from the original plan document; where a day's items did not add up
- * to the plan's own estimate, a "Misc (plan rounding)" line makes up the
- * difference so the defaults total exactly what the plan says.
+ * Costs are in INR: [id, label, default, min, max, opts?]. Without opts the
+ * price is per person. With `per` and `cap` it is for one room or vehicle that
+ * up to `cap` people share, and each person pays their share. With `road`, the
+ * line only counts when the group goes by bus ("bus") or private car ("car").
  *
  * Legs: [from, to, mode, kmMin, kmMax, hoursMin, hoursMax, note?].
  * Map positions (`map`) are hand-placed on a 1000 x 720 canvas; trail lat/lng
@@ -210,7 +210,7 @@ export const D: TripData = {
         "Sarangkot, above the lake, is one of the world's most popular paragliding launch sites."
       ],
       "notes": {
-        "stay": "Lakeside guesthouses INR 1-2K",
+        "stay": "Lakeside guesthouses INR 1-2K a room",
         "network": "Good 4G, fast Wi-Fi",
         "atm": "Plenty. Treat Pokhara as your last reliable ATM."
       },
@@ -272,7 +272,7 @@ export const D: TripData = {
         "The houses are roofed with hand-cut slate, which keeps them cool in summer and warm in winter."
       ],
       "notes": {
-        "stay": "Gurung Cottage and many lodges, INR 1.5-3K",
+        "stay": "Gurung Cottage and many lodges, about INR 1.5K a person",
         "network": "Good 4G",
         "atm": "Do not count on it"
       },
@@ -306,7 +306,7 @@ export const D: TripData = {
         "Trekkers rave about Chhomrong's chocolate cake, a reward for climbing the stairs."
       ],
       "notes": {
-        "stay": "Teahouses ~INR 1K",
+        "stay": "Teahouse rooms ~NPR 500-1,000",
         "network": "4G patchy, paid Wi-Fi",
         "atm": "No"
       },
@@ -334,7 +334,7 @@ export const D: TripData = {
         "Machhapuchhre looks like a single sharp spire from here. Its twin 'fishtail' summit only shows from other angles."
       ],
       "notes": {
-        "stay": "Teahouses ~INR 1K",
+        "stay": "Teahouse rooms ~NPR 500-1,000",
         "network": "Patchy",
         "atm": "No"
       },
@@ -390,7 +390,7 @@ export const D: TripData = {
         "The roar you hear all night is the Modi Khola, fed by Annapurna's glaciers."
       ],
       "notes": {
-        "stay": "Teahouses ~INR 1K",
+        "stay": "Teahouse rooms ~NPR 500-1,000",
         "network": "Weak, paid Wi-Fi",
         "atm": "No"
       },
@@ -418,7 +418,7 @@ export const D: TripData = {
         "Snow can linger in the gullies here well into spring."
       ],
       "notes": {
-        "stay": "Teahouses ~INR 1K",
+        "stay": "Teahouse rooms ~NPR 500-1,000",
         "network": "Weak",
         "atm": "No"
       },
@@ -446,7 +446,7 @@ export const D: TripData = {
         "Above 3,000 m, guidelines say to raise your sleeping altitude by no more than about 500 m a day. Deurali to ABC is about 900 m."
       ],
       "notes": {
-        "stay": "Teahouses ~INR 1K, cold rooms",
+        "stay": "Teahouse rooms ~NPR 500-1,000, cold",
         "network": "Paid Wi-Fi, unreliable",
         "atm": "No"
       },
@@ -473,7 +473,7 @@ export const D: TripData = {
         "The name means 'fish tail', after its twin summit, which shows from the west."
       ],
       "notes": {
-        "stay": "Teahouses ~INR 1-1.5K",
+        "stay": "Teahouse rooms ~NPR 800-1,500",
         "network": "Paid Wi-Fi",
         "atm": "No"
       },
@@ -502,7 +502,7 @@ export const D: TripData = {
         "Water boils at about 86 °C up here, so tea is cooler and noodles take longer."
       ],
       "notes": {
-        "stay": "Teahouses ~INR 1.5K, dorms in peak season",
+        "stay": "Rooms ~NPR 1,000-2,000, dorms in peak season",
         "network": "Paid Wi-Fi, sometimes NTC signal",
         "atm": "No"
       },
@@ -530,7 +530,7 @@ export const D: TripData = {
         "It is a popular last night on the trail, which makes it a good place to celebrate."
       ],
       "notes": {
-        "stay": "Teahouses ~INR 1K",
+        "stay": "Teahouse rooms ~NPR 500-1,000",
         "network": "Good 4G",
         "atm": "No"
       },
@@ -693,18 +693,68 @@ export const D: TripData = {
           12000
         ],
         [
-          "cab",
-          "Gorakhpur to Sonauli",
-          1000,
-          500,
-          1500
+          "sonauli-bus",
+          "Bus Gorakhpur to Sonauli",
+          200,
+          130,
+          300,
+          {
+            "road": "bus"
+          }
+        ],
+        [
+          "sonauli-cab",
+          "Taxi Gorakhpur to Sonauli",
+          3000,
+          2500,
+          4000,
+          {
+            "per": "car",
+            "cap": 4,
+            "road": "car"
+          }
+        ],
+        [
+          "auto",
+          "Auto from the border to Bhairahawa bus park",
+          200,
+          150,
+          300,
+          {
+            "road": "bus"
+          }
         ],
         [
           "bus",
-          "Bhairahawa to Pokhara bus",
+          "VIP sofa bus Bhairahawa to Pokhara (overnight)",
+          1200,
+          950,
           1500,
-          650,
-          1500
+          {
+            "road": "bus"
+          }
+        ],
+        [
+          "car",
+          "Private car Bhairahawa to Pokhara",
+          12000,
+          10000,
+          15000,
+          {
+            "per": "car",
+            "cap": 4,
+            "road": "car"
+          }
+        ],
+        [
+          "local",
+          "Local bus or ride-hail, bus park to Lakeside",
+          150,
+          100,
+          300,
+          {
+            "road": "bus"
+          }
         ],
         [
           "food",
@@ -712,13 +762,6 @@ export const D: TripData = {
           1000,
           800,
           1500
-        ],
-        [
-          "misc",
-          "Misc (plan rounding)",
-          500,
-          0,
-          500
         ]
       ],
       "tips": [
@@ -732,7 +775,7 @@ export const D: TripData = {
         },
         {
           "lvl": "info",
-          "t": "A tourist bus from Bhairahawa to Pokhara is about NPR 1,000 to 1,500 (₹650 to ₹950). The plan's ₹1,500 is on the safe side."
+          "t": "A VIP sofa bus from Bhairahawa to Pokhara is about NPR 1,500 to 2,400 (₹950 to ₹1,500). For four people, a private car is about ₹3,000 each: more than double the bus, but door to door. Switch with Getting around."
         }
       ],
       "sleepNote": "night on the bus, in Pokhara by morning",
@@ -775,7 +818,7 @@ export const D: TripData = {
           0,
           3,
           3,
-          "Air India daily direct reported from 2026; else via Delhi"
+          "Direct, or via Delhi"
         ],
         [
           "kathmandu",
@@ -797,11 +840,36 @@ export const D: TripData = {
           22000
         ],
         [
+          "local",
+          "Local bus or ride-hail: airport to bus park, bus park to Lakeside",
+          350,
+          200,
+          600,
+          {
+            "road": "bus"
+          }
+        ],
+        [
           "bus",
-          "Kathmandu to Pokhara bus",
+          "Tourist sofa bus Kathmandu to Pokhara",
           1500,
-          650,
-          1750
+          1100,
+          2200,
+          {
+            "road": "bus"
+          }
+        ],
+        [
+          "car",
+          "Private car Kathmandu to Pokhara",
+          14000,
+          11000,
+          17000,
+          {
+            "per": "car",
+            "cap": 4,
+            "road": "car"
+          }
         ],
         [
           "food",
@@ -812,10 +880,6 @@ export const D: TripData = {
         ]
       ],
       "tips": [
-        {
-          "lvl": "info",
-          "t": "Air India reportedly started a daily direct BLR-KTM flight in 2026 (early morning). Otherwise expect a stop in Delhi. Check before booking."
-        },
         {
           "lvl": "info",
           "t": "Tourist buses leave Kathmandu around 7 am. Landing first means you may need the afternoon bus or a night in Kathmandu."
@@ -878,6 +942,28 @@ export const D: TripData = {
           7000
         ],
         [
+          "local",
+          "Local bus or ride-hail, Pokhara airport to Lakeside",
+          150,
+          100,
+          300,
+          {
+            "road": "bus"
+          }
+        ],
+        [
+          "taxi",
+          "Taxi, Pokhara airport to Lakeside",
+          400,
+          300,
+          600,
+          {
+            "per": "taxi",
+            "cap": 4,
+            "road": "car"
+          }
+        ],
+        [
           "food",
           "Food & misc",
           1000,
@@ -913,11 +999,38 @@ export const D: TripData = {
           22000
         ],
         [
+          "local",
+          "Local bus or ride-hail, airport to Thamel",
+          200,
+          100,
+          350,
+          {
+            "road": "bus"
+          }
+        ],
+        [
+          "taxi",
+          "Taxi, airport to Thamel",
+          600,
+          450,
+          900,
+          {
+            "per": "taxi",
+            "cap": 4,
+            "road": "car"
+          }
+        ],
+        [
           "stay",
           "Stay in Kathmandu (Thamel)",
-          1500,
-          1000,
-          2500
+          2000,
+          1200,
+          3000,
+          {
+            "per": "room",
+            "cap": 2,
+            "full": 2500
+          }
         ],
         [
           "food",
@@ -928,10 +1041,6 @@ export const D: TripData = {
         ]
       ],
       "tips": [
-        {
-          "lvl": "info",
-          "t": "Air India reportedly started a daily direct BLR to KTM flight in 2026. Otherwise expect a stop in Delhi. Check before booking."
-        },
         {
           "lvl": "info",
           "t": "Stay in or near Thamel: it is walkable, has every budget, and is 20 minutes from the airport for the flight to Pokhara."
@@ -949,9 +1058,14 @@ export const D: TripData = {
         [
           "stay",
           "Stay in Kathmandu (Thamel)",
-          1500,
-          1000,
-          2500
+          2000,
+          1200,
+          3000,
+          {
+            "per": "room",
+            "cap": 2,
+            "full": 2500
+          }
         ],
         [
           "food",
@@ -962,10 +1076,32 @@ export const D: TripData = {
         ],
         [
           "sights",
-          "Entry tickets and taxis",
-          1500,
+          "Entry tickets (SAARC rates)",
+          500,
+          300,
+          900
+        ],
+        [
+          "local",
+          "Local buses and ride-hail between the sights",
+          300,
+          200,
+          500,
+          {
+            "road": "bus"
+          }
+        ],
+        [
+          "taxi",
+          "Taxis between the sights",
+          1200,
           800,
-          2500
+          1800,
+          {
+            "per": "taxi",
+            "cap": 4,
+            "road": "car"
+          }
         ]
       ],
       "todo": [
@@ -1022,11 +1158,33 @@ export const D: TripData = {
           7000
         ],
         [
-          "acap",
-          "ACAP permit (buy in Kathmandu or online)",
+          "local",
+          "Local bus or ride-hail: Thamel to the airport, airport to Lakeside",
+          350,
+          200,
+          600,
+          {
+            "road": "bus"
+          }
+        ],
+        [
+          "taxi",
+          "Taxis: Thamel to the airport, airport to Lakeside",
+          900,
           700,
+          1200,
+          {
+            "per": "taxi",
+            "cap": 4,
+            "road": "car"
+          }
+        ],
+        [
+          "acap",
+          "ACAP permit (SAARC rate NPR 1,000; double at a check post)",
           625,
-          700
+          625,
+          1250
         ],
         [
           "tims",
@@ -1037,10 +1195,15 @@ export const D: TripData = {
         ],
         [
           "stay",
-          "Stay",
+          "Stay in Pokhara (Lakeside)",
           1500,
           1000,
-          2000
+          2500,
+          {
+            "per": "room",
+            "cap": 2,
+            "full": 2000
+          }
         ],
         [
           "food",
@@ -1110,17 +1273,42 @@ export const D: TripData = {
       "costs": [
         [
           "bus",
-          "Kathmandu to Pokhara bus",
+          "Tourist sofa bus Kathmandu to Pokhara",
           1500,
-          650,
-          1750
+          1100,
+          2200,
+          {
+            "road": "bus"
+          }
+        ],
+        [
+          "car",
+          "Private car Kathmandu to Pokhara",
+          14000,
+          11000,
+          17000,
+          {
+            "per": "car",
+            "cap": 4,
+            "road": "car"
+          }
+        ],
+        [
+          "local",
+          "Walk or local bus, bus park to Lakeside",
+          150,
+          0,
+          300,
+          {
+            "road": "bus"
+          }
         ],
         [
           "acap",
-          "ACAP permit (buy in Kathmandu or online)",
-          700,
+          "ACAP permit (SAARC rate NPR 1,000; double at a check post)",
           625,
-          700
+          625,
+          1250
         ],
         [
           "tims",
@@ -1131,10 +1319,15 @@ export const D: TripData = {
         ],
         [
           "stay",
-          "Stay",
+          "Stay in Pokhara (Lakeside)",
           1500,
           1000,
-          2000
+          2500,
+          {
+            "per": "room",
+            "cap": 2,
+            "full": 2000
+          }
         ],
         [
           "food",
@@ -1199,10 +1392,10 @@ export const D: TripData = {
       "costs": [
         [
           "acap",
-          "ACAP permit (SAARC rate NPR 1,000)",
-          700,
+          "ACAP permit (SAARC rate NPR 1,000; double at a check post)",
           625,
-          700
+          625,
+          1250
         ],
         [
           "tims",
@@ -1213,10 +1406,15 @@ export const D: TripData = {
         ],
         [
           "stay",
-          "Stay",
+          "Stay in Pokhara (Lakeside)",
           1500,
           1000,
-          2000
+          2500,
+          {
+            "per": "room",
+            "cap": 2,
+            "full": 2000
+          }
         ],
         [
           "food",
@@ -1276,10 +1474,15 @@ export const D: TripData = {
       "costs": [
         [
           "stay",
-          "Stay",
-          2000,
+          "Stay in Pokhara (Lakeside)",
+          1500,
           1000,
-          2000
+          2500,
+          {
+            "per": "room",
+            "cap": 2,
+            "full": 2000
+          }
         ],
         [
           "food",
@@ -1287,12 +1490,34 @@ export const D: TripData = {
           1000,
           800,
           1500
+        ],
+        [
+          "local",
+          "Local buses and walking",
+          200,
+          100,
+          400,
+          {
+            "road": "bus"
+          }
+        ],
+        [
+          "taxi",
+          "Taxis around Pokhara",
+          1000,
+          700,
+          1500,
+          {
+            "per": "taxi",
+            "cap": 4,
+            "road": "car"
+          }
         ]
       ],
       "tips": [
         {
           "lvl": "info",
-          "t": "A reward after the trek: Phewa Lake, the Peace Pagoda, a soak and a slow lunch. Paragliding, bungee and boating are not included; add them under Add ons to budget for them."
+          "t": "A reward after the trek: Phewa Lake, the Peace Pagoda, a soak and a slow lunch. Paragliding and bungee are under Add ons; a rowing boat on Phewa is extra, about NPR 800 to 1,000 an hour."
         }
       ],
       "todo": [
@@ -1334,22 +1559,47 @@ export const D: TripData = {
       ],
       "costs": [
         [
+          "local",
+          "Local bus or ride-hail to the jeep stand",
+          150,
+          100,
+          300,
+          {
+            "road": "bus"
+          }
+        ],
+        [
           "jeep",
-          "Jeep Pokhara to Kimche",
+          "Shared jeep Pokhara to Kimche",
           1000,
           800,
-          1500
+          1500,
+          {
+            "road": "bus"
+          }
+        ],
+        [
+          "car",
+          "Private jeep Pokhara to Kimche",
+          8000,
+          6500,
+          10000,
+          {
+            "per": "jeep",
+            "cap": 6,
+            "road": "car"
+          }
         ],
         [
           "stay",
-          "Gurung Cottage",
-          2000,
-          1000,
-          2500
+          "Lodge in Ghandruk",
+          1500,
+          1200,
+          2000
         ],
         [
           "food",
-          "Food & misc",
+          "Food & misc (incl. hot water, charging)",
           1500,
           1200,
           2000
@@ -1385,16 +1635,16 @@ export const D: TripData = {
       "costs": [
         [
           "stay",
-          "Teahouse",
-          1000,
-          800,
-          1500
+          "Teahouse, half a twin room",
+          650,
+          625,
+          1000
         ],
         [
           "food",
-          "Food & misc",
+          "Food & misc (incl. hot water, charging)",
           2000,
-          1500,
+          1600,
           2500
         ]
       ]
@@ -1421,16 +1671,16 @@ export const D: TripData = {
       "costs": [
         [
           "stay",
-          "Teahouse",
-          1000,
-          800,
-          1500
+          "Teahouse, half a twin room",
+          650,
+          625,
+          1000
         ],
         [
           "food",
-          "Food & misc",
-          2000,
-          1500,
+          "Food & misc (incl. hot water, charging)",
+          2200,
+          1800,
           3000
         ]
       ]
@@ -1457,14 +1707,14 @@ export const D: TripData = {
       "costs": [
         [
           "stay",
-          "Teahouse",
-          1000,
-          800,
-          1500
+          "Teahouse, half a twin room",
+          650,
+          625,
+          1000
         ],
         [
           "food",
-          "Food & misc",
+          "Food & misc (incl. hot water, charging)",
           2500,
           2000,
           3000
@@ -1503,17 +1753,17 @@ export const D: TripData = {
       "costs": [
         [
           "stay",
-          "Teahouse",
-          1000,
-          800,
-          1500
+          "Teahouse, half a twin room",
+          650,
+          625,
+          1000
         ],
         [
           "food",
-          "Food & misc",
-          2000,
-          1500,
-          2500
+          "Food & misc (incl. hot water, charging)",
+          2200,
+          1800,
+          2800
         ]
       ]
     },
@@ -1539,14 +1789,14 @@ export const D: TripData = {
       "costs": [
         [
           "stay",
-          "Teahouse",
-          1000,
-          800,
-          1500
+          "Teahouse, half a twin room",
+          650,
+          625,
+          1000
         ],
         [
           "food",
-          "Food & misc",
+          "Food & misc (incl. hot water, charging)",
           2500,
           2000,
           3000
@@ -1585,14 +1835,14 @@ export const D: TripData = {
       "costs": [
         [
           "stay",
-          "Teahouse at ABC",
-          1500,
-          1000,
-          2000
+          "Teahouse at ABC, half a twin room",
+          800,
+          625,
+          1200
         ],
         [
           "food",
-          "Food & misc",
+          "Food & misc (incl. hot water, charging)",
           3000,
           2500,
           3500
@@ -1630,17 +1880,17 @@ export const D: TripData = {
       "costs": [
         [
           "stay",
-          "Teahouse",
-          1000,
-          800,
-          1500
+          "Teahouse, half a twin room",
+          650,
+          625,
+          1000
         ],
         [
           "food",
-          "Food & misc",
-          2000,
-          1500,
-          2500
+          "Food & misc (incl. hot water, charging)",
+          2300,
+          1800,
+          2800
         ]
       ],
       "tips": [
@@ -1671,16 +1921,16 @@ export const D: TripData = {
       "costs": [
         [
           "stay",
-          "Teahouse",
-          1000,
-          800,
-          1500
+          "Teahouse, half a twin room",
+          650,
+          625,
+          1000
         ],
         [
           "food",
-          "Food & misc",
+          "Food & misc (incl. hot water, charging)",
           2000,
-          1500,
+          1600,
           2500
         ]
       ],
@@ -1725,14 +1975,44 @@ export const D: TripData = {
           "Shared jeep Motkyu to Pokhara",
           1000,
           800,
-          1500
+          1500,
+          {
+            "road": "bus"
+          }
+        ],
+        [
+          "car",
+          "Private jeep Motkyu to Pokhara",
+          8000,
+          6500,
+          10000,
+          {
+            "per": "jeep",
+            "cap": 6,
+            "road": "car"
+          }
+        ],
+        [
+          "local",
+          "Local bus or ride-hail, bus park to Lakeside",
+          150,
+          100,
+          300,
+          {
+            "road": "bus"
+          }
         ],
         [
           "stay",
-          "Stay in Pokhara",
+          "Stay in Pokhara (Lakeside)",
           1500,
           1000,
-          2000
+          2500,
+          {
+            "per": "room",
+            "cap": 2,
+            "full": 2000
+          }
         ],
         [
           "food",
@@ -1778,14 +2058,44 @@ export const D: TripData = {
           "Shared jeep Motkyu to Pokhara",
           1000,
           800,
-          1500
+          1500,
+          {
+            "road": "bus"
+          }
+        ],
+        [
+          "car",
+          "Private jeep Motkyu to Pokhara",
+          8000,
+          6500,
+          10000,
+          {
+            "per": "jeep",
+            "cap": 6,
+            "road": "car"
+          }
+        ],
+        [
+          "local",
+          "Local bus or ride-hail, bus park to Lakeside",
+          150,
+          100,
+          300,
+          {
+            "road": "bus"
+          }
         ],
         [
           "stay",
-          "Stay in Pokhara",
+          "Stay in Pokhara (Lakeside)",
           1500,
           1000,
-          2000
+          2500,
+          {
+            "per": "room",
+            "cap": 2,
+            "full": 2000
+          }
         ],
         [
           "food",
@@ -1814,16 +2124,21 @@ export const D: TripData = {
         [
           "stay",
           "Stay",
+          1500,
           1000,
-          1000,
-          2000
+          2500,
+          {
+            "per": "room",
+            "cap": 2,
+            "full": 2000
+          }
         ],
         [
           "food",
           "Food & misc",
-          2000,
           1500,
-          2500
+          1200,
+          2000
         ]
       ],
       "tips": [
@@ -1891,18 +2206,68 @@ export const D: TripData = {
       ],
       "costs": [
         [
-          "bus",
-          "Pokhara to Bhairahawa night bus",
-          1500,
-          650,
-          1500
+          "local",
+          "Local bus or ride-hail, Lakeside to the bus park",
+          150,
+          100,
+          300,
+          {
+            "road": "bus"
+          }
         ],
         [
-          "cab",
-          "Sonauli to Gorakhpur",
-          1000,
-          500,
-          1500
+          "bus",
+          "VIP sofa night bus Pokhara to Bhairahawa",
+          1200,
+          950,
+          1500,
+          {
+            "road": "bus"
+          }
+        ],
+        [
+          "auto",
+          "Auto from Bhairahawa to the border",
+          200,
+          150,
+          300,
+          {
+            "road": "bus"
+          }
+        ],
+        [
+          "sonauli-bus",
+          "Bus Sonauli to Gorakhpur",
+          200,
+          130,
+          300,
+          {
+            "road": "bus"
+          }
+        ],
+        [
+          "car",
+          "Private car Pokhara to the border",
+          12000,
+          10000,
+          15000,
+          {
+            "per": "car",
+            "cap": 4,
+            "road": "car"
+          }
+        ],
+        [
+          "sonauli-cab",
+          "Taxi Sonauli to Gorakhpur",
+          3000,
+          2500,
+          4000,
+          {
+            "per": "car",
+            "cap": 4,
+            "road": "car"
+          }
         ],
         [
           "flight",
@@ -1927,6 +2292,10 @@ export const D: TripData = {
         {
           "lvl": "info",
           "t": "Pick a GOP to BLR flight from early afternoon: after the night bus you still need to clear the border and do 3 hours of road."
+        },
+        {
+          "lvl": "info",
+          "t": "Going by private car instead of the night bus? Drive by day: leave Pokhara before dawn for an afternoon flight, and it is still 7 to 8 hours to the border."
         }
       ],
       "legLinks": {
@@ -1995,6 +2364,28 @@ export const D: TripData = {
           22000
         ],
         [
+          "local",
+          "Local bus or ride-hail to Pokhara airport",
+          150,
+          100,
+          300,
+          {
+            "road": "bus"
+          }
+        ],
+        [
+          "taxi",
+          "Taxi, Lakeside to Pokhara airport",
+          400,
+          300,
+          600,
+          {
+            "per": "taxi",
+            "cap": 4,
+            "road": "car"
+          }
+        ],
+        [
           "food",
           "Food & misc",
           1000,
@@ -2019,8 +2410,10 @@ export const D: TripData = {
       "min": 1500,
       "max": 2000,
       "comfort": 1,
-      "note": "Paid for every walking day, up and down: a porter from Pokhara walks the whole route with you and back. About NPR 2,500-3,000 a day, carries up to ~20 kg. Tip at the end.",
-      "group": "On the trail"
+      "note": "Paid for every walking day, up and down: a porter from Pokhara walks the whole route with you and back. About NPR 2,500-3,000 a day and carries up to ~20 kg, usually for two people, so two of you share one.",
+      "group": "On the trail",
+      "unit": "porter",
+      "cap": 2
     },
     "guide": {
       "title": "Licensed guide",
@@ -2030,29 +2423,20 @@ export const D: TripData = {
       "min": 2000,
       "max": 2800,
       "comfort": 0.5,
-      "note": "Paid for every walking day, like a porter. About NPR 3,500-4,500 a day. Check current rules on whether a guide is mandatory.",
-      "group": "On the trail"
+      "note": "Paid for every walking day, like a porter. About NPR 3,500-4,500 a day for one guide, shared by the whole group. Optional on this trail in practice.",
+      "group": "On the trail",
+      "unit": "guide",
+      "cap": 8
     },
     "rentals": {
       "title": "Gear rentals in Pokhara",
       "emoji": "🧥",
-      "per": "trip",
-      "inr": 1500,
-      "min": 800,
-      "max": 3000,
-      "comfort": 0.3,
-      "note": "Sleeping bag, down jacket, poles, microspikes. Roughly NPR 100-200 per item per day.",
-      "group": "On the trail"
-    },
-    "extras": {
-      "title": "Teahouse extras",
-      "emoji": "🔌",
       "per": "trekDay",
-      "inr": 300,
-      "min": 150,
+      "inr": 350,
+      "min": 200,
       "max": 500,
       "comfort": 0.3,
-      "note": "Hot shower, charging, Wi-Fi, water refills: NPR 200-500 each.",
+      "note": "Sleeping bag, down jacket, poles, microspikes. Roughly NPR 100-200 per item per day, so about NPR 400-800 a day for the set.",
       "group": "On the trail"
     },
     "sim_ntc": {
@@ -2100,11 +2484,11 @@ export const D: TripData = {
       "title": "Trek insurance with heli cover",
       "emoji": "🛡️",
       "per": "trip",
-      "inr": 2500,
-      "min": 1500,
-      "max": 5000,
+      "inr": 5000,
+      "min": 3500,
+      "max": 8000,
       "comfort": 0.3,
-      "note": "Must cover trekking to ~4,200 m and helicopter evacuation. Many standard policies stop at 2,000-3,000 m.",
+      "note": "Must cover trekking to ~4,200 m and helicopter evacuation, which alone can cost US$ 3,000-5,000. Many standard policies stop at 2,000-3,000 m, so check the altitude limit in writing.",
       "group": "Peace of mind"
     }
   },

@@ -4,6 +4,7 @@ import { money, npr } from "../format";
 import { addonUnit } from "../model";
 import { useTrip } from "../store";
 import { useUI } from "../ui";
+import { RoadPicker } from "./Route";
 
 export function AddonPrice({ id }: { id: string }) {
   const { st, update } = useTrip();
@@ -28,6 +29,7 @@ export function AddonPrice({ id }: { id: string }) {
       <label className="field">
         <span>
           Price in ₹
+          {a.unit ? " for one " + a.unit : ""}
           {a.per === "trekDay" ? " per walking day" : a.per === "pokharaNight" ? " per night in Pokhara" : ""}
         </span>
         <input type="number" min={0} step={50} value={v} onChange={(e) => setV(Number(e.target.value))} autoFocus />
@@ -87,7 +89,9 @@ export function Settings() {
           }}
         />
       </label>
-      <p className="muted small">Prices stay per person. The total for the group shows under the per-person figure.</p>
+      <p className="muted small">Prices are each person's share: two to a hotel room, four to a car or taxi, six to a jeep, one porter for two. On the trail, teahouse rooms are always counted as half a twin, since solo trekkers pair up too. The total for the group shows under the per-person figure.</p>
+      <RoadPicker />
+      <p className="muted small">This sets every day; change a single day from its cost details. Solo, take buses, shared jeeps and ride-hail, with VIP sofa buses on the long rides. For three or four people, taxis in town cost about the same each as going by bus; a private car between towns costs more each but is door to door and faster.</p>
     </div>
   );
 }

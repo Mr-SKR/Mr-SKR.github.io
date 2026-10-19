@@ -2942,3 +2942,10 @@ textarea {
 .inline-links svg {
   transform: rotate(-45deg);
 }
+
+.road-pick {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 0 0;
+}

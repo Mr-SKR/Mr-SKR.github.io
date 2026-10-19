@@ -7,7 +7,7 @@
  * alternative instantly and the tests pin the plan's totals.
  */
 import { D } from "./data";
-import type { Card, Choices, Day, Metrics, Place, TripState } from "./types";
+import type { Card, Choices, CostItem, Day, Metrics, Place, Road, TripState } from "./types";
 
 export function P(id: string): Place {
   return (
@@ -143,6 +143,8 @@ export function defaultState(): TripState {
     edits: {},
     rate: D.inrToNpr,
     people: 1,
+    road: "bus",
+    roads: {},
     start: D.defaultStartDate,
   };
 }
@@ -190,6 +192,10 @@ export function sanitize(raw: unknown): TripState {
   // Prices are always INR now; NPR is shown alongside as a reference.
   if (typeof st.rate === "number" && st.rate > 0) out.rate = st.rate;
   if (typeof st.people === "number" && st.people >= 1) out.people = Math.min(30, Math.floor(st.people));
+  const isRoad = (v: unknown): v is Road => v === "bus" || v === "car";
+  if (isRoad(st.road)) out.road = st.road;
+  if (st.roads && typeof st.roads === "object")
+    for (const [id, v] of Object.entries(st.roads)) if (Object.hasOwn(D.cards, id) && hasRoadChoice(id) && isRoad(v) && v !== out.road) out.roads[id] = v;
   if (st.start === null || (typeof st.start === "string" && /^\d{4}-\d{2}-\d{2}$/.test(st.start))) out.start = st.start;
   return out;
 }
@@ -217,26 +223,58 @@ export function flatten(plan: Plan): Day[] {
   return out;
 }
 
-export function cardCost(st: Pick<TripState, "edits">, id: string) {
-  const c = card(id);
+type RoadSt = Pick<TripState, "road" | "roads">;
+type CostSt = Pick<TripState, "edits" | "people"> & RoadSt;
+
+/** How this day's road legs are done: its own choice, or the default. */
+export const roadFor = (st: RoadSt, id: string): Road => st.roads[id] ?? st.road;
+
+/**
+ * Each person's share of something priced per room, vehicle or porter: a
+ * group of 3 needs 2 rooms of 2, so each pays 2/3 of a room. `full` is what
+ * a full room costs relative to one person in it (1.33 when a ₹1,500 room
+ * is ₹2,000 for two); a part-full room is charged at the single price.
+ */
+export function shareOf(people: number, cap?: number, full = 1) {
+  if (!cap) return 1;
+  const n = Math.max(1, people);
+  return (Math.floor(n / cap) * full + (n % cap ? 1 : 0)) / n;
+}
+
+/** Each person's share of one cost line's price. */
+export const itemShare = (people: number, it: CostItem) => shareOf(people, it[5]?.cap, it[5]?.full ? it[5].full / it[2] : 1);
+
+/** The cost lines that count for the way the group travels. */
+export function costItems(st: RoadSt, id: string) {
+  const road = roadFor(st, id);
+  return (card(id)?.costs || []).filter((it) => !it[5]?.road || it[5].road === road);
+}
+
+/** Does this day change with the bus or car choice? */
+export const hasRoadChoice = (id: string) => (card(id)?.costs || []).some((it) => it[5]?.road);
+
+/** Per person: shared rooms and vehicles are split between the people travelling. */
+export function cardCost(st: CostSt, id: string) {
   const e = st.edits[id] || {};
   const r = { v: 0, lo: 0, hi: 0, edited: false };
-  (c?.costs || []).forEach((it) => {
+  costItems(st, id).forEach((it) => {
+    const f = itemShare(st.people, it);
     const ed = e[it[0]];
     if (ed != null) {
-      r.v += ed;
-      r.lo += ed;
-      r.hi += ed;
+      r.v += ed * f;
+      r.lo += ed * f;
+      r.hi += ed * f;
       r.edited = true;
     } else {
-      r.v += it[2];
-      r.lo += it[3];
-      r.hi += it[4];
+      r.v += it[2] * f;
+      r.lo += it[3] * f;
+      r.hi += it[4] * f;
     }
   });
   return r;
 }
 
+/** The price of one unit of an add on (one porter for a day, one policy), before any split. */
 export function addonUnit(st: Pick<TripState, "edits">, id: string) {
   const a = D.addons[id];
   const e = st.edits["addon:" + id];
@@ -311,7 +349,7 @@ export function metrics(st: TripState, choices: Choices = st.choices): Metrics &
     const a = D.addons[id];
     if (!a) return;
     const u = addonUnit(st, id);
-    const n = addonCount(a.per, m);
+    const n = addonCount(a.per, m) * shareOf(st.people, a.cap);
     m.cost += u.v * n;
     m.lo += u.lo * n;
     m.hi += u.hi * n;

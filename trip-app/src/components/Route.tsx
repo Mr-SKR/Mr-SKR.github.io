@@ -2,7 +2,7 @@ import { AnimatePresence, motion, useReducedMotion, useScroll, useSpring, useTra
 import { useEffect, useMemo, useRef, useState } from "react";
 import { D } from "../data";
 import { dayDate, elev, fmtDate, fmtNum, ft, legSummary, money, moneyShort, npr, photo, routeNames } from "../format";
-import { addonCount, addonUnit, BLOCKS, blockOption, blockShown, dayBlocks, cardCost, goalChoices, GOALS, matchingGoal, metrics, MY_PLAN, myOption, P, type Block, type BlockOption, type Goal } from "../model";
+import { addonCount, addonUnit, BLOCKS, blockOption, blockShown, dayBlocks, cardCost, costItems, goalChoices, hasRoadChoice, itemShare, roadFor, shareOf, GOALS, matchingGoal, metrics, MY_PLAN, myOption, P, type Block, type BlockOption, type Goal } from "../model";
 import { KEYS, useLocal, useTrip } from "../store";
 import type { Day } from "../types";
 import { useUI } from "../ui";
@@ -395,7 +395,8 @@ function Extras() {
                     const a = D.addons[id];
                     const active = st.addons.includes(id);
                     const u = addonUnit(st, id);
-                    const n = addonCount(a.per, m);
+                    const n = addonCount(a.per, m) * shareOf(st.people, a.cap);
+                    const split = n / addonCount(a.per, m);
                     return (
                       <li key={id} className={active ? "on" : ""}>
                         <label className="extra">
@@ -413,7 +414,10 @@ function Extras() {
                         <span className="extra-price">
                           {money(u.v * n)}
                           <small className="npr-ref">{npr(st, u.v * n)}</small>
-                          <small>{a.per === "trekDay" ? money(u.v) + " a walking day × " + n : a.per === "pokharaNight" ? money(u.v) + " a night × " + n : "once"}</small>
+                          <small>
+                            {a.per === "trekDay" ? money(u.v) + " a walking day × " + addonCount(a.per, m) : a.per === "pokharaNight" ? money(u.v) + " a night × " + addonCount(a.per, m) : "once"}
+                            {split < 1 && ", your share " + Math.round(split * 100) + "%"}
+                          </small>
                           <button className="link small" onClick={() => ui.open({ kind: "addon", id })} aria-label={"Edit price of " + a.title}>
                             edit
                           </button>
@@ -437,9 +441,9 @@ function PriceNote() {
   const edited = Object.keys(st.edits).length > 0;
   return (
     <p className="muted small">
-      Prices are per person in Indian rupees (₹), with Nepali rupees for reference at ₹1 = NPR {st.rate} ·{" "}
+      Prices are per person in Indian rupees (₹), with rooms and vehicles split between you and Nepali rupees for reference at ₹1 = NPR {st.rate} ·{" "}
       <button className="link" onClick={() => ui.open({ kind: "settings" })}>
-        {st.people > 1 ? st.people + " people, rate" : "people and rate"}
+        {(st.people > 1 ? st.people + " people" : "Solo") + (st.road === "car" ? " by car and taxi" : " by bus") + (Object.keys(st.roads).length ? ", some days not" : "")}
       </button>
       {edited && (
         <>
@@ -531,6 +535,7 @@ function DayDetail({ f }: { f: Day }) {
   const { st, update } = useTrip();
   const ui = useUI();
   const e = st.edits[f.id] || {};
+  const items = costItems(st, f.id);
   const setItem = (item: string, v: number, def: number) =>
     update((d) => {
       const inr = Math.round(v);
@@ -542,18 +547,21 @@ function DayDetail({ f }: { f: Day }) {
   return (
     <div className="detail-grid">
       <div>
-        <h4 className="mini">Costs per person, in ₹</h4>
+        <h4 className="mini">Costs in ₹</h4>
         <table className="costs">
           <tbody>
-            {f.c.costs.map((it) => {
+            {items.map((it) => {
               const edited = e[it[0]] != null;
               const v = edited ? e[it[0]] : it[2];
+              const per = it[5]?.per;
+              const f1 = itemShare(st.people, it);
               return (
                 <tr key={it[0]}>
                   <td>
                     {it[1]}
                     <span className="range">
-                      usually {moneyShort(it[3])} to {moneyShort(it[4])}
+                      {per ? "a " + per + ", " : ""}usually {moneyShort(it[3])} to {moneyShort(it[4])}
+                      {per && f1 < 1 && " · " + money(v * f1) + " each"}
                     </span>
                     <InlineLinks links={f.c.costLinks?.[it[0]]} />
                   </td>
@@ -585,6 +593,7 @@ function DayDetail({ f }: { f: Day }) {
             })}
           </tbody>
         </table>
+        {hasRoadChoice(f.id) && <RoadPicker id={f.id} />}
       </div>
       <div>
         {f.c.legs.length > 0 && (
@@ -636,6 +645,41 @@ function DayDetail({ f }: { f: Day }) {
         </p>
       </div>
     </div>
+  );
+}
+
+/**
+ * Buses, shared jeeps and ride-hail, or private cars and taxis split between
+ * the group. With a day `id` it sets that day only; without, it sets the
+ * default for every day and clears the per-day choices.
+ */
+export function RoadPicker({ id }: { id?: string }) {
+  const { st, update } = useTrip();
+  const current = id ? roadFor(st, id) : st.road;
+  const pick = (v: "bus" | "car") =>
+    update((d) => {
+      if (!id) {
+        d.road = v;
+        d.roads = {};
+      } else if (v === d.road) delete d.roads[id];
+      else d.roads[id] = v;
+    });
+  return (
+    <p className="road-pick">
+      <span className="muted small">{id ? "Getting around this day" : "Getting around, every day"}</span>
+      <span className="seg tiny" role="group" aria-label="Getting around">
+        {(
+          [
+            ["bus", "Bus"],
+            ["car", "Car and taxi"],
+          ] as const
+        ).map(([v, label]) => (
+          <button key={v} aria-pressed={current === v} onClick={() => pick(v)}>
+            {label}
+          </button>
+        ))}
+      </span>
+    </p>
   );
 }
 

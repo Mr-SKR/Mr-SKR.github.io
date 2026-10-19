@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { allChoices, applyGoal, blockOf, decodeShare, defaultState, encodeShare, importShare, goalChoices, matchingGoal, metrics, MY_PLAN, quickPick, shareState, suggestions } from "./model";
+import { allChoices, applyGoal, blockOf, cardCost, costItems, itemShare, decodeShare, defaultState, encodeShare, importShare, goalChoices, matchingGoal, metrics, MY_PLAN, quickPick, sanitize, shareOf, shareState, suggestions } from "./model";
 import { moneyShort } from "./format";
 
 const st = defaultState();
@@ -10,15 +10,15 @@ describe("my plan", () => {
     expect(m.flat.slice(0, 3).map((f) => f.id)).toEqual(["arr-ktm", "ktm-explore", "pkr-arrive-fly"]);
     expect(m.flat.at(-1)?.id).toBe("home-gop");
     expect(m.flat.at(-2)?.id).toBe("pkr-explore");
-    expect(m.cost).toBe(75700);
+    expect(m.cost).toBe(73275);
     expect(m.days).toBe(14);
     expect(m.abc).toBe(true);
     expect(m.breaks).toHaveLength(0);
   });
 
-  it("the Gorakhpur version is the original document's plan in 13 days: INR 65,000 less repriced food and the Ghandruk night", () => {
+  it("the Gorakhpur version takes 13 days", () => {
     const m = metrics(st, { ...MY_PLAN, arrive: "gop" });
-    expect(m.cost).toBe(61200);
+    expect(m.cost).toBe(56675);
     expect(m.days).toBe(13);
   });
 
@@ -30,6 +30,65 @@ describe("my plan", () => {
     const abc = metrics(st).ams.find((a) => a.to === "abc");
     expect(abc?.lvl).toBe("bad");
     expect(abc?.gain).toBe(900);
+  });
+});
+
+describe("groups", () => {
+  it("splits rooms two to a room and taxis four to a car", () => {
+    expect(shareOf(1, 2)).toBe(1);
+    expect(shareOf(2, 2)).toBe(0.5);
+    expect(shareOf(3, 2)).toBeCloseTo(2 / 3);
+    expect(shareOf(5, 4)).toBeCloseTo(2 / 5);
+    expect(shareOf(7)).toBe(1);
+    expect(shareOf(2, 2, 4 / 3) * 1500).toBeCloseTo(1000);
+    expect(shareOf(3, 2, 4 / 3) * 1500).toBeCloseTo((2000 + 1500) / 3);
+  });
+
+  it("a Pokhara room is ₹1,500 alone and ₹2,000 for two, so each of two pays ₹1,000", () => {
+    const solo = cardCost(st, "pkr-explore").v;
+    const duo = cardCost({ ...st, people: 2 }, "pkr-explore").v;
+    expect(solo - duo).toBe(500);
+  });
+
+  it("a teahouse night is half a twin room even solo", () => {
+    expect(cardCost(st, "up-ghandruk-chhomrong").v).toBe(cardCost({ ...st, people: 2 }, "up-ghandruk-chhomrong").v);
+  });
+
+  it("four people in taxis pay about what one person pays by bus in town", () => {
+    const road = (s: typeof st) => costItems(s, "ktm-explore").filter((it) => it[5]?.road).reduce((t, it) => t + it[2] * itemShare(s.people, it), 0);
+    expect(road({ ...st, people: 4, road: "car" })).toBe(road(st));
+  });
+
+  it("counts bus lines by bus and car lines by car, never both", () => {
+    const bus = cardCost(st, "arr-gop").v;
+    const car = cardCost({ ...st, road: "car" }, "arr-gop").v;
+    expect(bus).toBe(8000 + 200 + 200 + 1200 + 150 + 1000);
+    expect(car).toBe(8000 + 3000 + 12000 + 1000);
+    expect(cardCost({ ...st, road: "car", people: 4 }, "arr-gop").v).toBe(8000 + 750 + 3000 + 1000);
+  });
+
+  it("splits a porter between two people, and an edited price is the price of one porter", () => {
+    const base = { ...st, addons: ["porter"], edits: { "addon:porter": { v: 2000 } } };
+    const one = metrics(base);
+    const two = metrics({ ...base, people: 2 });
+    expect(one.addonCost).toBe(2000 * one.trekDays);
+    expect(two.addonCost).toBe(1000 * two.trekDays);
+  });
+
+  it("a day's own road choice changes that day only", () => {
+    const s = { ...st, roads: { "arr-gop": "car" as const } };
+    expect(cardCost(s, "arr-gop").v).toBe(cardCost({ ...st, road: "car" }, "arr-gop").v);
+    expect(cardCost(s, "home-gop").v).toBe(cardCost(st, "home-gop").v);
+  });
+
+  it("keeps per-day road choices only for real days with a road leg", () => {
+    const back = sanitize({ ...st, roads: { "arr-gop": "car", "home-gop": "bus", "up-dovan-deurali": "car", nope: "car", "pkr-explore": "plane" } });
+    expect(back.roads).toEqual({ "arr-gop": "car" });
+  });
+
+  it("keeps the road choice across reloads and drops nonsense", () => {
+    expect(sanitize({ ...st, road: "car" }).road).toBe("car");
+    expect(sanitize({ ...st, road: "plane" }).road).toBe("bus");
   });
 });
 
@@ -49,7 +108,7 @@ describe("quick picks", () => {
   it("cheapest really is the lowest cost of all combinations", () => {
     const m = metrics(st, quickPick(st, "cheapest"));
     expect(m.cost).toBe(Math.min(...costs.map((x) => x.cost)));
-    expect(m.cost).toBe(49200);
+    expect(m.cost).toBe(45675);
     expect(m.days).toBe(9);
   });
 
@@ -113,7 +172,7 @@ describe("goals", () => {
 
   it("picking a goal sets the plan to it, and the page recognises it", () => {
     const cheap = { ...st, choices: goalChoices(st, "cost") };
-    expect(metrics(cheap).cost).toBe(49200);
+    expect(metrics(cheap).cost).toBe(45675);
     expect(matchingGoal(cheap)).toBe("cost");
     expect(matchingGoal(st)).toBe("mine");
     expect(matchingGoal({ ...cheap, choices: { ...cheap.choices, buffer: true } })).toBe(null);
