@@ -10,20 +10,33 @@ describe("my plan", () => {
     expect(m.flat.slice(0, 3).map((f) => f.id)).toEqual(["arr-ktm", "ktm-explore", "pkr-arrive-fly"]);
     expect(m.flat.at(-1)?.id).toBe("home-gop");
     expect(m.flat.at(-2)?.id).toBe("pkr-explore");
-    expect(m.cost).toBe(73275);
+    expect(m.cost).toBe(75175);
     expect(m.days).toBe(14);
     expect(m.abc).toBe(true);
     expect(m.breaks).toHaveLength(0);
   });
 
+  it("starts with gear rentals and an NTC SIM ticked", () => {
+    expect(st.addons).toEqual(["rentals", "sim_ntc"]);
+    expect(metrics(st).addonCost).toBe(350 * 8 + 600);
+  });
+
   it("the Gorakhpur version takes 13 days", () => {
     const m = metrics(st, { ...MY_PLAN, arrive: "gop" });
-    expect(m.cost).toBe(56675);
+    expect(m.cost).toBe(58575);
     expect(m.days).toBe(13);
   });
 
   it("skipping the Kathmandu day saves exactly one day", () => {
     expect(metrics(st, { ...MY_PLAN, ktmDay: false }).days).toBe(13);
+  });
+
+  it("pays no room on the last Pokhara day, since that night is on the bus", () => {
+    const m = metrics(st);
+    const last = m.flat.at(-2)!;
+    expect(last.noBed).toBeTruthy();
+    expect(cardCost(st, last.id, true).v).toBe(cardCost(st, last.id).v - 1500);
+    expect(m.pkrNights).toBe(3);
   });
 
   it("flags Deurali to ABC as a big altitude jump", () => {
@@ -107,6 +120,14 @@ describe("groups", () => {
 });
 
 describe("every combination", () => {
+  it("never takes the night bus home on the day you come down from the trek", () => {
+    for (const c of allChoices()) {
+      const flat = metrics(st, c).flat;
+      const i = flat.findIndex((f) => f.id === "home-gop");
+      if (i > 0) expect(flat[i - 1].c.type, JSON.stringify(c)).toBe("stay");
+    }
+  });
+
   it("is a continuous route that reaches ABC", () => {
     for (const c of allChoices()) {
       const m = metrics(st, c);
@@ -122,8 +143,8 @@ describe("quick picks", () => {
   it("cheapest really is the lowest cost of all combinations", () => {
     const m = metrics(st, quickPick(st, "cheapest"));
     expect(m.cost).toBe(Math.min(...costs.map((x) => x.cost)));
-    expect(m.cost).toBe(45675);
-    expect(m.days).toBe(9);
+    expect(m.cost).toBe(49375);
+    expect(m.days).toBe(10);
   });
 
   it("shortest really has the fewest days", () => {
@@ -193,7 +214,7 @@ describe("goals", () => {
 
   it("picking a goal sets the plan to it, and the page recognises it", () => {
     const cheap = { ...st, choices: goalChoices(st, "cost") };
-    expect(metrics(cheap).cost).toBe(45675);
+    expect(metrics(cheap).cost).toBe(49375);
     expect(matchingGoal(cheap)).toBe("cost");
     expect(matchingGoal(st)).toBe("mine");
     expect(matchingGoal({ ...cheap, choices: { ...cheap.choices, buffer: true } })).toBe(null);

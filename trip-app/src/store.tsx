@@ -43,7 +43,20 @@ export const KEYS = {
   ui: "trip.ui.v2",
   goal: "trip.goal.v4",
   addonsOpen: "trip.addons.open",
+  addonDefaults: "trip.addons.defaults.v1",
 };
+
+/**
+ * Add ons that became defaults after some visitors had saved a plan. They are
+ * ticked once for those visitors too, then theirs to untick. Pure, so React
+ * can run it twice; the flag is saved from an effect.
+ */
+const NEW_DEFAULT_ADDONS = ["rentals", "sim_ntc"];
+
+function withNewDefaults(st: TripState): TripState {
+  if (load(KEYS.addonDefaults, false)) return st;
+  return { ...st, addons: [...new Set([...st.addons, ...NEW_DEFAULT_ADDONS])] };
+}
 
 /* ---------- Trip state with undo ---------- */
 interface UpdateOpts {
@@ -98,10 +111,12 @@ function reduce(h: History, a: Action): History {
 
 export function TripProvider({ children }: { children: ReactNode }) {
   const [{ st, past }, dispatch] = useReducer(reduce, null, () => ({
-    st: sanitize(load(KEYS.state, null)),
+    st: withNewDefaults(sanitize(load(KEYS.state, null))),
     past: [],
   }));
   const [notice, setNotice] = useState<Notice | null>(null);
+
+  useEffect(() => save(KEYS.addonDefaults, true), []);
 
   // A shared build in the URL wins over what is stored, then the hash is
   // cleared so a reload keeps the visitor's own edits. Checked on load and on

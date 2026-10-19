@@ -1010,6 +1010,12 @@ textarea {
   min-height: 2.6em;
 }
 
+.gp-warn {
+  font-size: 13px;
+  color: var(--red);
+  margin: 8px 2px 0;
+}
+
 .changes {
   overflow: hidden;
 }

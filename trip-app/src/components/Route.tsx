@@ -117,7 +117,7 @@ function useBlockData() {
       const b = (out[owner[i]] ||= { first: f.day, last: f.day, days: [], cost: 0 });
       b.last = f.day;
       b.days.push(f);
-      b.cost += cardCost(st, f.id).v;
+      b.cost += cardCost(st, f.id, !!f.noBed).v;
     });
     return out;
   }, [st, m]);
@@ -188,6 +188,12 @@ function GoalPanel() {
       <p className="gp-hint">
         {active ? shown!.hint : edited ? "Based on “" + shown!.label + "”, with your own changes. Tap it again to reset." : "Your own mix. Tap one to start from it."}
       </p>
+      {m.amsScore > mine.amsScore && (
+        <p className="gp-warn" role="note">
+          Climbs faster than my plan: {m.ams.map((a) => "+" + fmtNum(a.gain) + " m to " + P(a.to).short).join(", then ")}. Altitude sickness is much more
+          likely. Walking up in 4 days spreads the climb out.
+        </p>
+      )}
 
       <AnimatePresence initial={false}>
         {changes.length > 0 && (
@@ -438,7 +444,7 @@ function PriceNote() {
   const { st, m, update } = useTrip();
   const ui = useUI();
   // Only what the plan shows counts: edits to lines or days not in it stay put but are not news.
-  const edited = m.flat.some((f) => cardCost(st, f.id).edited) || st.addons.some((id) => addonUnit(st, id).edited);
+  const edited = m.flat.some((f) => cardCost(st, f.id, !!f.noBed).edited) || st.addons.some((id) => addonUnit(st, id).edited);
   const mixed = m.flat.some((f) => Object.hasOwn(st.roads, f.id));
   return (
     <p className="muted small">
@@ -468,15 +474,14 @@ function PriceNote() {
 /* Days inside a block                                                 */
 /* ================================================================== */
 function DayRow({ f }: { f: Day }) {
-  const { st, m } = useTrip();
+  const { st } = useTrip();
   const [open, setOpen] = useState(false);
   const reduce = useReducedMotion();
-  const cc = cardCost(st, f.id);
+  const cc = cardCost(st, f.id, !!f.noBed);
   const date = dayDate(st.start, f.day);
   const notes = f.c.tips || [];
   const warn = notes.some((t) => t.lvl === "warn");
-  // A night bus home starts this evening, so tonight is not spent in a bed.
-  const sleepNote = f.c.sleepNote || m.flat.find((x) => x.day === f.day + 1)?.c.nightBefore;
+  const sleepNote = f.c.sleepNote || f.noBed;
   return (
     <div className={"day" + (open ? " open" : "")} data-day={f.day}>
       <div className="day-num" aria-hidden>
@@ -536,7 +541,7 @@ function DayDetail({ f }: { f: Day }) {
   const { st, update } = useTrip();
   const ui = useUI();
   const e = st.edits[f.id] || {};
-  const items = costItems(st, f.id);
+  const items = costItems(st, f.id, !!f.noBed);
   const setItem = (item: string, v: number, def: number) =>
     update((d) => {
       const inr = Math.round(v);

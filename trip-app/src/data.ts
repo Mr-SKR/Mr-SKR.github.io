@@ -817,8 +817,8 @@ export const D: TripData = {
           0,
           0,
           3,
-          3,
-          "Direct, or via Delhi"
+          8,
+          "Direct about 3 h, via Delhi 6 to 8 h"
         ],
         [
           "kathmandu",
@@ -882,7 +882,7 @@ export const D: TripData = {
       "tips": [
         {
           "lvl": "info",
-          "t": "Tourist buses leave Kathmandu around 7 am. Landing first means you may need the afternoon bus or a night in Kathmandu."
+          "t": "Tourist buses leave Kathmandu around 7 am, and a flight via Delhi lands in the afternoon at best. Expect the afternoon bus into Pokhara late at night, or turn on A day in Kathmandu and take the morning bus."
         }
       ],
       "legLinks": {
@@ -913,7 +913,8 @@ export const D: TripData = {
           0,
           0,
           3,
-          3
+          8,
+          "Direct about 3 h, via Delhi 6 to 8 h"
         ],
         [
           "kathmandu",
@@ -970,6 +971,12 @@ export const D: TripData = {
           800,
           1500
         ]
+      ],
+      "tips": [
+        {
+          "lvl": "info",
+          "t": "Pick a Bengaluru flight that lands in Kathmandu by early afternoon, so you can still make one of the last flights to Pokhara. Via Delhi that usually means leaving Bengaluru early in the morning. If it lands later, turn on A day in Kathmandu and spend the night there."
+        }
       ]
     },
     "arr-ktm": {
@@ -986,8 +993,8 @@ export const D: TripData = {
           0,
           0,
           3,
-          3,
-          "Direct, or via Delhi"
+          8,
+          "Direct about 3 h, via Delhi 6 to 8 h"
         ]
       ],
       "costs": [
@@ -2156,6 +2163,36 @@ export const D: TripData = {
         "Sunrise over the Annapurnas from Sarangkot, or paraglide down from it"
       ]
     },
+    "pkr-depart": {
+      "title": "Last day in Pokhara, night bus out",
+      "emoji": "🌙",
+      "type": "stay",
+      "from": "pokhara",
+      "to": "pokhara",
+      "comfort": 4,
+      "legs": [],
+      "costs": [
+        [
+          "food",
+          "Food & misc",
+          1000,
+          800,
+          1500
+        ]
+      ],
+      "tips": [
+        {
+          "lvl": "info",
+          "t": "A night in a bed after coming down, then a slow day before the night bus to the border this evening. Check out in the morning and leave your bags at the lodge."
+        }
+      ],
+      "todo": [
+        "Walk the Lakeside promenade along Phewa Lake at sunset",
+        "Row or take a boat to the Tal Barahi temple on its island",
+        "Climb to the World Peace Pagoda for the view back over the lake to the Annapurnas",
+        "Davis Falls and Gupteshwor Cave, where the stream drops underground"
+      ]
+    },
     "home-gop": {
       "title": "Night bus to the border, fly home",
       "type": "transit",
@@ -2345,7 +2382,8 @@ export const D: TripData = {
           0,
           0,
           3,
-          3
+          8,
+          "Direct about 3 h, via Delhi 6 to 8 h"
         ]
       ],
       "costs": [
@@ -2436,7 +2474,7 @@ export const D: TripData = {
       "min": 200,
       "max": 500,
       "comfort": 0.3,
-      "note": "Sleeping bag, down jacket, poles, microspikes. Roughly NPR 100-200 per item per day, so about NPR 400-800 a day for the set.",
+      "note": "Sleeping bag, down jacket, poles, microspikes. Rental bags are often old and flatter than their label, so pick one labelled -15 °C or colder. Roughly NPR 100-200 per item per day, so about NPR 400-800 a day for the set.",
       "group": "On the trail"
     },
     "sim_ntc": {
@@ -2537,7 +2575,7 @@ export const D: TripData = {
       "items": [
         {
           "id": "bag",
-          "t": "Sleeping bag (rated -10 °C in winter)"
+          "t": "Sleeping bag, comfort rated -10 °C (Dec to Mar), plus a liner"
         },
         {
           "id": "down",

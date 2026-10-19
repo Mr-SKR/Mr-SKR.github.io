@@ -147,6 +147,8 @@ export interface Day {
   alt: number;
   gain: number;
   ams?: "warn" | "bad";
+  /** Tonight is on a night bus (the next day's `nightBefore`), so no room is paid for. */
+  noBed?: string;
 }
 
 export interface AmsFlag {

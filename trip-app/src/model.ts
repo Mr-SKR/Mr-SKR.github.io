@@ -79,7 +79,7 @@ export const CHOICES: ChoiceDef[] = [
     title: "Free day in Pokhara after the trek",
     options: [
       { v: 2, label: "Include", note: "A slow day by the lake once you are back down." },
-      { v: 1, label: "Skip", note: "Head home straight after the trek (and any spare day)." },
+      { v: 1, label: "Skip", note: "Head home straight after the trek (and any spare day). Via Gorakhpur you still sleep a night in Pokhara before the night bus." },
     ],
   },
   {
@@ -128,6 +128,8 @@ export function daysFor(c: Choices): string[] {
   else ids.push("down-bamboo-pokhara");
   if (c.buffer) ids.push("buf-pokhara");
   if (c.pokhara === 2) ids.push("pkr-explore");
+  // The night bus never leaves on the day you come down: sleep in Pokhara first.
+  if (c.home === "gop" && !c.buffer && c.pokhara === 1) ids.push("pkr-depart");
   if (c.home === "gop") ids.push("home-gop");
   else ids.push("home-ktm-direct");
   return ids;
@@ -139,7 +141,7 @@ export function daysFor(c: Choices): string[] {
 export function defaultState(): TripState {
   return {
     choices: { ...MY_PLAN },
-    addons: [],
+    addons: ["rentals", "sim_ntc"],
     edits: {},
     rate: D.inrToNpr,
     people: 1,
@@ -220,6 +222,10 @@ export function flatten(plan: Plan): Day[] {
     if (!c) return;
     out.push({ si: i, ci: 0, id, c, from: c.from as string, to: c.to as string, day: out.length + 1, alt: 0, gain: 0 });
   });
+  out.forEach((f, i) => {
+    const next = out[i + 1]?.c.nightBefore;
+    if (next) f.noBed = next;
+  });
   return out;
 }
 
@@ -252,10 +258,13 @@ export function itemCost(people: number, it: CostItem, price: number, edited = f
   return (Math.floor(n / o.cap) * full + (n % o.cap ? price : 0)) / n;
 }
 
-/** The cost lines that count for the way the group travels. */
-export function costItems(st: RoadSt, id: string) {
+/**
+ * The cost lines that count for the way the group travels. With `noBed` the
+ * night is spent on a bus, so the day's room ("stay") does not count.
+ */
+export function costItems(st: RoadSt, id: string, noBed = false) {
   const road = roadFor(st, id);
-  return (card(id)?.costs || []).filter((it) => !it[5]?.road || it[5].road === road);
+  return (card(id)?.costs || []).filter((it) => (!it[5]?.road || it[5].road === road) && !(noBed && it[0] === "stay"));
 }
 
 /** Does this day change with the bus or car choice? */
@@ -266,10 +275,10 @@ export const hasRoadChoice = (id: string) => (card(id)?.costs || []).some((it) =
  * travelling. Each line is rounded to the rupee, so the day is the sum of the
  * lines shown and the trip the sum of the days.
  */
-export function cardCost(st: CostSt, id: string) {
+export function cardCost(st: CostSt, id: string, noBed = false) {
   const e = st.edits[id] || {};
   const r = { v: 0, lo: 0, hi: 0, edited: false };
-  costItems(st, id).forEach((it) => {
+  costItems(st, id, noBed).forEach((it) => {
     const ed = e[it[0]];
     const at = (price: number) => Math.round(itemCost(st.people, it, price, ed != null));
     if (ed != null) {
@@ -339,13 +348,13 @@ export function metrics(st: TripState, choices: Choices = st.choices): Metrics &
   let rested = false;
   let comfortSum = 0;
   flat.forEach((f, i) => {
-    const cc = cardCost(st, f.id);
+    const cc = cardCost(st, f.id, !!f.noBed);
     m.cost += cc.v;
     m.lo += cc.lo;
     m.hi += cc.hi;
     comfortSum += f.c.comfort || 3;
     if (f.c.type === "trek") m.trekDays++;
-    if (f.to === "pokhara") m.pkrNights++;
+    if (f.to === "pokhara" && !f.noBed && !f.c.sleepNote) m.pkrNights++;
     (f.c.legs || []).forEach((l) => {
       if (l[2] === "trek") m.km += (l[3] + l[4]) / 2;
       else m.travelHours += (l[5] + l[6]) / 2;
@@ -622,6 +631,7 @@ const CARD_BLOCK: Record<string, string> = {
   "down-jhinu-pokhara": "down",
   "down-bamboo-pokhara": "down",
   "buf-pokhara": "buffer",
+  "pkr-depart": "home",
   "home-gop": "home",
   "home-ktm-direct": "home",
 };
