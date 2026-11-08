@@ -2,7 +2,7 @@ import { motion, useReducedMotion } from "motion/react";
 import { lazy, Suspense, useMemo, useState } from "react";
 import { D } from "../data";
 import { elev, fmtNum, ft } from "../format";
-import { dayBlocks, P } from "../model";
+import { dayBlocks, P, trailBetween } from "../model";
 import { useTrip } from "../store";
 import { useUI } from "../ui";
 
@@ -46,19 +46,6 @@ export function AltitudeSection() {
       </div>
     </section>
   );
-}
-
-/* The trail between two stops, waypoint by waypoint. Going up follows the
-   ladder in the data; coming down, the trail leaves the valley at Chhomrong
-   for Jhinu Danda and the road head at Motkyu. */
-const DOWN_LADDER = ["motkyu", "jhinu", "chhomrong", "sinuwa", "bamboo", "dovan", "himalaya", "deurali", "mbc", "abc"];
-function trailBetween(a: string, b: string): string[] {
-  for (const lad of [D.trailLadder, DOWN_LADDER]) {
-    const i = lad.indexOf(a);
-    const j = lad.indexOf(b);
-    if (i >= 0 && j >= 0 && i !== j) return i < j ? lad.slice(i + 1, j + 1) : lad.slice(j, i).reverse();
-  }
-  return [b];
 }
 
 /** "MBC" and "ABC" rather than the full names, and "Pokhara" rather than its airport code. */
@@ -261,6 +248,13 @@ function TrailMap() {
             </g>
           );
         })}
+        {/* Home is where the lines start and end, but not a place to open. */}
+        <g className="stop home on" aria-hidden>
+          <circle cx={D.home.map[0]} cy={D.home.map[1]} r={5.5} className="dot" />
+          <text x={D.home.map[0] + 14} y={D.home.map[1] + 5}>
+            {D.home.short}
+          </text>
+        </g>
       </svg>
       <div className="legend">
         <span className="foot">On foot</span>

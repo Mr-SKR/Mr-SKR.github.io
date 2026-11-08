@@ -32,6 +32,16 @@ export interface Link {
   url: string;
 }
 
+/** A longer read about a place, in short titled parts. */
+export interface Story {
+  /** A headline, like "Annapurna, 1950". */
+  title: string;
+  /** One line to make you want to read it, shown on the day's arrival card. */
+  hook: string;
+  parts: { h: string; p: string[] }[];
+  sources: Link[];
+}
+
 export interface Place {
   name: string;
   short: string;
@@ -42,10 +52,13 @@ export interface Place {
   region: "gateway" | "trek";
   photo?: string;
   blurb: string;
+  /** Where the name comes from, when that is known. */
+  origin?: string;
   facts: string[];
   notes: { stay?: string; network?: string; atm?: string };
   wiki: string;
   links?: Link[];
+  story?: Story;
 }
 
 export interface Card {
@@ -56,6 +69,8 @@ export interface Card {
   to?: string;
   comfort: number;
   legs: Leg[];
+  /** Places walked through on the first leg without stopping, in order. */
+  via?: string[];
   costs: CostItem[];
   tips?: Tip[];
   links?: Link[];
@@ -93,6 +108,8 @@ export interface TripData {
   title: string;
   defaultStartDate: string | null;
   inrToNpr: number;
+  /** Where the trip starts and ends: on the route and maps, but not a place to read about. */
+  home: { id: string } & Pick<Place, "name" | "short" | "alt" | "ll" | "map" | "label">;
   places: Record<string, Place>;
   trailLadder: string[];
   cards: Record<string, Card>;

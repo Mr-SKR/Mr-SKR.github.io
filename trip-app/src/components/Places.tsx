@@ -1,8 +1,8 @@
 import { motion, useReducedMotion, useScroll, useTransform } from "motion/react";
-import { useMemo, useRef } from "react";
+import { useLayoutEffect, useMemo, useRef } from "react";
 import { D } from "../data";
 import { ago, dayDate, elev, isoDate, parseDate, photo } from "../format";
-import { climateFor, P } from "../model";
+import { cardStops, climateFor, P } from "../model";
 import { useTrip } from "../store";
 import { useWeather, wxWord } from "../weather";
 
@@ -12,7 +12,7 @@ export function useRoutePlaces() {
     const seen = new Set<string>();
     const out: string[] = [];
     m.flat.forEach((f) => {
-      [f.from, ...f.c.legs.flatMap((l) => [l[0], l[1]]), f.to].forEach((id) => {
+      [f.from, ...cardStops(f.c), f.to].forEach((id) => {
         if (!seen.has(id) && D.places[id]) {
           seen.add(id);
           out.push(id);
@@ -24,10 +24,18 @@ export function useRoutePlaces() {
 }
 
 /* ---------------- The sheet for one place ---------------- */
-export function PlaceSheet({ id }: { id: string }) {
+export function PlaceSheet({ id, at }: { id: string; at?: "story" }) {
   const { st, m } = useTrip();
   const p = P(id);
   const scroller = useRef<HTMLDivElement>(null);
+  const storyRef = useRef<HTMLElement>(null);
+  // Opened from "Read the story": the sheet slides in already at the story.
+  // The photo above it has a fixed height, so its place is known before paint.
+  useLayoutEffect(() => {
+    const box = scroller.current;
+    const el = storyRef.current;
+    if (at === "story" && box && el) box.scrollTop += el.getBoundingClientRect().top - box.getBoundingClientRect().top - 16;
+  }, [at]);
   const reduce = useReducedMotion();
   const { scrollY } = useScroll({ container: scroller });
   const y = useTransform(scrollY, [0, 400], [0, reduce ? 0 : 120]);
@@ -64,7 +72,41 @@ export function PlaceSheet({ id }: { id: string }) {
           ))}
         </div>
 
+        {p.story && (
+          <article className="tale" ref={storyRef} aria-labelledby={"tale-" + id}>
+            <p className="eyebrow">The story</p>
+            <h3 className="tale-title" id={"tale-" + id}>
+              {p.story.title}
+            </h3>
+            {p.story.parts.map((part) => (
+              <section key={part.h}>
+                <h4 className="tale-h">{part.h}</h4>
+                {part.p.map((t, i) => (
+                  <p key={i}>{t}</p>
+                ))}
+              </section>
+            ))}
+            <p className="tale-sources">
+              Sources:{" "}
+              {p.story.sources.map((s, i) => (
+                <span key={s.url}>
+                  {i > 0 && " · "}
+                  <a href={s.url} target="_blank" rel="noopener">
+                    {s.label}
+                  </a>
+                </span>
+              ))}
+            </p>
+          </article>
+        )}
+
         <dl className="facts-list">
+          {p.origin && (
+            <>
+              <dt>Name</dt>
+              <dd>{p.origin}</dd>
+            </>
+          )}
           {p.notes.stay && (
             <>
               <dt>Stay</dt>

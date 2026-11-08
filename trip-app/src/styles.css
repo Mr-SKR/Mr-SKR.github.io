@@ -1154,6 +1154,39 @@ textarea {
   color: var(--stone);
 }
 
+/* The day range doubles as the way into the card's days. */
+.block-when.on {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px 3px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(29, 78, 216, 0.08);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--glacier);
+  transition: background 0.2s, color 0.2s;
+}
+
+.block:not(.off) .block-face {
+  cursor: pointer;
+}
+
+.block:not(.off):not(.open):not(.changed):hover {
+  border-color: var(--stone-2);
+}
+
+.block-face:hover .block-when.on,
+.block.open .block-when.on {
+  background: var(--glacier);
+  color: #fff;
+}
+
+.block-when .chev {
+  display: inline-flex;
+}
+
 .block-cost {
   margin-left: auto;
   font-family: "Raleway", sans-serif;
@@ -1265,35 +1298,47 @@ textarea {
   margin: 0;
 }
 
-.block-more {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 14px;
-  padding: 0;
-  border: 0;
-  background: none;
-  font-size: 13px;
-  font-weight: 600;
+/* The round chevron that marks everything that opens. */
+.disc {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--mist);
   color: var(--ink-2);
+  transition: background 0.2s, color 0.2s;
 }
 
-.block-more:hover {
-  color: var(--glacier);
-}
-
-.block-more .chev {
+.disc .chev {
   display: inline-flex;
 }
 
+.day-head:hover .disc,
+.day.open .disc {
+  background: var(--glacier);
+  color: #fff;
+}
+
+/* Clips the open/close animation, so it is 14px wider on each side than its
+   content: the day rows' hover tint (10px) and focus ring (4px more) reach
+   past the text and must not be cut. */
 .block-days {
   overflow: hidden;
-  margin-top: 10px;
-  border-top: 1px solid var(--line);
+  margin: 10px -14px 0;
+  padding: 0 14px;
+}
+
+.block-days::before {
+  content: "";
+  display: block;
+  height: 1px;
+  background: var(--line);
 }
 
 .block-days .day {
-  grid-template-columns: 40px minmax(0, 1fr) auto;
+  grid-template-columns: 40px minmax(0, 1fr);
   gap: 2px 14px;
   padding: 14px 0;
 }
@@ -1361,9 +1406,22 @@ textarea {
   margin: 0 0 2px;
 }
 
-.addons-head .block-more {
-  margin-top: 0;
+.addons-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   flex-shrink: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--glacier);
+}
+
+.addons-toggle:hover .disc {
+  background: var(--glacier);
+  color: #fff;
 }
 
 .addons-body {
@@ -1617,7 +1675,7 @@ textarea {
 /* ---------- Day rows ---------- */
 .day {
   display: grid;
-  grid-template-columns: 56px minmax(0, 1fr) auto;
+  grid-template-columns: 56px minmax(0, 1fr);
   gap: 4px 16px;
   align-items: start;
   padding: 18px 0;
@@ -1639,13 +1697,25 @@ textarea {
   color: var(--ink);
 }
 
+/* The whole row, price included, is the button. The negative margin lets the
+   hover tint breathe without shifting the text. */
 .day-head {
-  display: block;
-  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+  width: calc(100% + 20px);
+  margin: -8px -10px;
+  padding: 8px 10px;
   text-align: left;
   background: none;
   border: 0;
-  padding: 0;
+  border-radius: 12px;
+  transition: background 0.2s;
+}
+
+.day-head:hover {
+  background: var(--snow);
 }
 
 .day-head:hover .day-title,
@@ -1653,23 +1723,10 @@ textarea {
   color: var(--glacier);
 }
 
-.day-more {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  margin-top: 8px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--glacier);
-}
-
-.day-more .chev {
-  display: inline-flex;
-}
-
-.day-head:hover .day-more {
-  text-decoration: underline;
-  text-underline-offset: 3px;
+.day-side {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
 }
 
 .day-title {
@@ -1958,7 +2015,7 @@ textarea {
 
 @media (max-width: 640px) {
   .day {
-    grid-template-columns: 36px minmax(0, 1fr) auto;
+    grid-template-columns: 36px minmax(0, 1fr);
     gap: 4px 12px;
   }
   .day-num {
@@ -2202,6 +2259,10 @@ textarea {
   outline: none;
 }
 
+.trailmap .stop.home {
+  pointer-events: none;
+}
+
 .trailmap .stop .hit {
   fill: transparent;
 }
@@ -2441,6 +2502,90 @@ textarea {
   font-size: 16px;
   line-height: 1.7;
   color: var(--ink-2);
+}
+
+/* ---------- A place's story: a long read inside its sheet ---------- */
+.tale {
+  margin: 8px 0 32px;
+  padding-top: 28px;
+  border-top: 1px solid var(--line);
+  max-width: 62ch;
+}
+
+.tale-title {
+  font-size: 26px;
+  letter-spacing: -0.01em;
+  margin: 0 0 6px;
+}
+
+.tale-h {
+  font-family: "Raleway", sans-serif;
+  font-size: 17px;
+  font-weight: 600;
+  margin: 24px 0 8px;
+}
+
+.tale p {
+  font-size: 16px;
+  line-height: 1.7;
+  color: var(--ink-2);
+  margin: 0 0 14px;
+}
+
+.tale .eyebrow {
+  margin-bottom: 8px;
+}
+
+.tale p.tale-sources {
+  margin-top: 24px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--stone);
+}
+
+.tale-sources a {
+  color: var(--ink-2);
+  text-underline-offset: 3px;
+  text-decoration-color: var(--stone-2);
+}
+
+/* On the arrival card: the hook, and the way into the story. */
+.tale-teaser {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  margin: 4px 0 14px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--paper);
+  text-align: left;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.tale-teaser .eyebrow {
+  margin: 0;
+  font-size: 11px;
+}
+
+.tale-hook {
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--ink);
+}
+
+.tale-read {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--glacier);
+}
+
+.tale-teaser:hover {
+  border-color: var(--glacier);
+  background: var(--snow);
 }
 
 .facts-list {
@@ -2862,11 +3007,91 @@ textarea {
   }
 }
 
+/* ---------- Places passed without a night ---------- */
+.passing {
+  margin: 0 0 18px 54px;
+}
+
+.passing .eyebrow {
+  margin-bottom: 6px;
+}
+
+.passing ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.pass {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+  padding: 8px 10px 8px 8px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--paper);
+  text-align: left;
+  color: var(--stone);
+  transition: border-color 0.2s, background 0.2s, color 0.2s;
+}
+
+.pass img {
+  width: 52px;
+  height: 52px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: var(--mist);
+}
+
+.pass-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.pass-name {
+  font-family: "Raleway", sans-serif;
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--ink);
+}
+
+.pass-name small {
+  font-family: "Open Sans", sans-serif;
+  font-weight: 400;
+  font-size: 12px;
+  color: var(--stone);
+  margin-left: 4px;
+}
+
+.pass-line {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-2);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.pass:hover {
+  border-color: var(--glacier);
+  background: var(--snow);
+  color: var(--glacier);
+}
+
 @media (max-width: 640px) {
   .block-days .arrival {
     grid-template-columns: 1fr;
     margin-left: 0;
     gap: 12px;
+  }
+  .passing {
+    margin-left: 0;
   }
   .blocks-tools {
     padding-top: 8px;

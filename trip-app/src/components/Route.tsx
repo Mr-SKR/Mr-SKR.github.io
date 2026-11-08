@@ -1,8 +1,8 @@
 import { AnimatePresence, motion, useReducedMotion, useScroll, useSpring, useTransform } from "motion/react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type MouseEvent } from "react";
 import { D } from "../data";
 import { dayDate, elev, fmtDate, fmtNum, ft, legSummary, money, moneyShort, npr, photo, routeNames } from "../format";
-import { addonCost, addonUnit, BLOCKS, blockOption, blockShown, dayBlocks, cardCost, costItems, goalChoices, hasRoadChoice, itemCost, GOALS, matchingGoal, metrics, MY_PLAN, myOption, P, type Block, type BlockOption, type Goal } from "../model";
+import { addonCost, addonUnit, BLOCKS, blockOption, blockShown, cardStops, dayBlocks, cardCost, costItems, goalChoices, hasRoadChoice, itemCost, GOALS, matchingGoal, metrics, MY_PLAN, myOption, P, type Block, type BlockOption, type Goal } from "../model";
 import { KEYS, useLocal, useTrip } from "../store";
 import type { Day } from "../types";
 import { useUI } from "../ui";
@@ -63,7 +63,7 @@ export function RouteSection() {
             <div className="blocks-tools">
               <PriceNote />
               <button className="link small" onClick={() => setOpen(allOpen ? new Set() : new Set(shown.map((b) => b.id)))}>
-                {allOpen ? "Collapse all" : "Show every day"}
+                {allOpen ? "Collapse all" : "Expand all days"}
               </button>
             </div>
             <Blocks open={open} toggle={toggle} />
@@ -233,20 +233,31 @@ function GoalPanel() {
 function Blocks({ open, toggle }: { open: Set<string>; toggle: (id: string) => void }) {
   const { st, m } = useTrip();
   const data = useBlockData();
-  // A place gets its story the first time the route sleeps there.
-  const firstArrival = useMemo(() => {
-    const seen = new Set<string>(["blr"]);
-    const out = new Set<number>();
+  // A place gets its big card the first time the route sleeps there, and a
+  // small "on the way" row the first time the route passes it without a night.
+  const { firstArrival, passing } = useMemo(() => {
+    const slept = new Set<string>([D.home.id]);
+    const shown = new Set<string>();
+    const firstArrival = new Set<number>();
+    const passing = new Map<number, string[]>();
     m.flat.forEach((f) => {
-      if (!seen.has(f.to)) out.add(f.day);
-      seen.add(f.to);
+      const pass: string[] = [];
+      cardStops(f.c).forEach((id) => {
+        if (id === f.to || shown.has(id) || !D.places[id]) return;
+        shown.add(id);
+        pass.push(id);
+      });
+      if (pass.length) passing.set(f.day, pass);
+      if (!slept.has(f.to)) firstArrival.add(f.day);
+      slept.add(f.to);
+      shown.add(f.to);
     });
-    return out;
+    return { firstArrival, passing };
   }, [m.flat]);
   return (
     <ol className="blocks">
       {BLOCKS.filter((b) => blockShown(b, st.choices)).map((b) => (
-        <BlockCard key={b.id} b={b} data={data[b.id]} open={open.has(b.id)} onToggle={() => toggle(b.id)} firstArrival={firstArrival} />
+        <BlockCard key={b.id} b={b} data={data[b.id]} open={open.has(b.id)} onToggle={() => toggle(b.id)} firstArrival={firstArrival} passing={passing} />
       ))}
     </ol>
   );
@@ -258,12 +269,14 @@ function BlockCard({
   open,
   onToggle,
   firstArrival,
+  passing,
 }: {
   b: Block;
   data?: BlockData;
   open: boolean;
   onToggle: () => void;
   firstArrival: Set<number>;
+  passing: Map<number, string[]>;
 }) {
   const { st, m, update } = useTrip();
   const reduce = useReducedMotion();
@@ -277,8 +290,14 @@ function BlockCard({
   const tag = b.kind === "core" ? "Must-do" : b.kind === "optional" ? "Optional" : "Your choice";
   const when = data ? (data.first === data.last ? "Day " + data.first : "Days " + data.first + "\u2013" + data.last) : "Skipped";
   const note = b.kind === "swap" ? b.options![cur]?.note : b.note;
-  const nDays = data?.days.length || 0;
   const bodyId = "block-days-" + b.id;
+
+  // The whole card opens its days. Its own controls keep their clicks, and a
+  // drag to select text is not a click. The pill stays the keyboard way in.
+  const faceClick = (e: MouseEvent) => {
+    if (!included || (e.target as HTMLElement).closest("button, a, input, label") || getSelection()?.toString()) return;
+    onToggle();
+  };
 
   return (
     <motion.li
@@ -287,47 +306,50 @@ function BlockCard({
       transition={{ duration: 0.25 }}
       data-day={data?.first}
     >
-      <div className="block-top">
-        <span className={"block-tag tag-" + b.kind}>{tag}</span>
-        {changed && <span className="block-tag tag-changed">Changed</span>}
-        <span className="block-when">{when}</span>
-        <span className="block-cost">
-          {included ? money(data!.cost) : "\u2013"}
-          {included && <small>{npr(st, data!.cost)}</small>}
-        </span>
-      </div>
-      <h4 className="block-title">{b.title}</h4>
-      {b.options && (
-        <div className="options" role="radiogroup" aria-label={b.title} style={{ gridTemplateColumns: `repeat(${b.options.length}, minmax(0, 1fr))` }}>
-          {b.options.map((o, i) => {
-            const on = i === cur;
-            return (
-              <button
-                key={o.label}
-                role="radio"
-                aria-checked={on}
-                className={"option" + (on ? " on" : "") + (b.kind === "optional" && o.label === "Skip" ? " skip" : "")}
-                onClick={() => update((d) => void (d.choices = { ...d.choices, ...o.set }))}
-              >
-                <span className="option-label">
-                  {o.label}
-                  {i === myOption(b) && <span className="pick-dot" title="My pick" />}
-                </span>
-                <span className="option-delta">{on ? "chosen" : delta(o)}</span>
-              </button>
-            );
-          })}
+      <div className="block-face" onClick={faceClick}>
+        <div className="block-top">
+          <span className={"block-tag tag-" + b.kind}>{tag}</span>
+          {changed && <span className="block-tag tag-changed">Changed</span>}
+          {included ? (
+            <button className="block-when on" aria-expanded={open} aria-controls={bodyId} title={open ? "Hide the days" : "Show the days"} onClick={onToggle}>
+              {when}
+              <motion.span className="chev" animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.2 }}>
+                <Icon name="down" size={14} />
+              </motion.span>
+            </button>
+          ) : (
+            <span className="block-when">{when}</span>
+          )}
+          <span className="block-cost">
+            {included ? money(data!.cost) : "\u2013"}
+            {included && <small>{npr(st, data!.cost)}</small>}
+          </span>
         </div>
-      )}
-      {note && <p className="block-note">{note}</p>}
-      {included && (
-        <button className="block-more" aria-expanded={open} aria-controls={bodyId} onClick={onToggle}>
-          <span>{open ? "Hide the details" : nDays === 1 ? "Show the day" : "Show the " + nDays + " days"}</span>
-          <motion.span className="chev" animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.2 }}>
-            <Icon name="down" size={16} />
-          </motion.span>
-        </button>
-      )}
+        <h4 className="block-title">{b.title}</h4>
+        {b.options && (
+          <div className="options" role="radiogroup" aria-label={b.title} style={{ gridTemplateColumns: `repeat(${b.options.length}, minmax(0, 1fr))` }}>
+            {b.options.map((o, i) => {
+              const on = i === cur;
+              return (
+                <button
+                  key={o.label}
+                  role="radio"
+                  aria-checked={on}
+                  className={"option" + (on ? " on" : "") + (b.kind === "optional" && o.label === "Skip" ? " skip" : "")}
+                  onClick={() => update((d) => void (d.choices = { ...d.choices, ...o.set }))}
+                >
+                  <span className="option-label">
+                    {o.label}
+                    {i === myOption(b) && <span className="pick-dot" title="My pick" />}
+                  </span>
+                  <span className="option-delta">{on ? "chosen" : delta(o)}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+        {note && <p className="block-note">{note}</p>}
+      </div>
       <AnimatePresence initial={false}>
         {open && included && (
           <motion.div
@@ -341,6 +363,7 @@ function BlockCard({
             {data!.days.map((f) => (
               <div key={f.id + f.day} className="block-day">
                 <DayRow f={f} />
+                {passing.has(f.day) && <OnTheWay ids={passing.get(f.day)!} />}
                 {firstArrival.has(f.day) && <ArrivalCard f={f} />}
               </div>
             ))}
@@ -377,11 +400,13 @@ function Extras() {
             {on ? on + " added · " + money(m.addonCost) + " (" + npr(st, m.addonCost) + ") in the total" : "Not in the total until you tick them. Prices per person."}
           </p>
         </div>
-        <button className="block-more" aria-expanded={open} aria-controls="addons-list" onClick={() => setOpen(!open)}>
+        <button className="addons-toggle" aria-expanded={open} aria-controls="addons-list" onClick={() => setOpen(!open)}>
           <span>{open ? "Hide" : "Show"}</span>
-          <motion.span className="chev" animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.2 }}>
-            <Icon name="down" size={16} />
-          </motion.span>
+          <span className="disc" aria-hidden>
+            <motion.span className="chev" animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.2 }}>
+              <Icon name="down" size={16} />
+            </motion.span>
+          </span>
         </button>
       </div>
       <AnimatePresence initial={false}>
@@ -482,34 +507,55 @@ function DayRow({ f }: { f: Day }) {
   const notes = f.c.tips || [];
   const warn = notes.some((t) => t.lvl === "warn");
   const sleepNote = f.c.sleepNote || f.noBed;
+  const more = f.c.legs.length ? "Costs, route and notes" : "Costs and notes";
+  // The row is one big button: its name is the day's title, the rest describes it.
+  const uid = useId();
+  const hasFlags = !!f.ams || notes.length > 0;
   return (
     <div className={"day" + (open ? " open" : "")} data-day={f.day}>
       <div className="day-num" aria-hidden>
         {pad(f.day)}
       </div>
       <div className="day-main">
-        <button className="day-head" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
-          <span className="day-title">
-            <span className="sr-only">Day {f.day}: </span>
-            {f.c.title}
-          </span>
-          <span className="day-meta">
-            {date && <>{fmtDate(date)} · </>}
-            {routeNames(f.c, f.to)}
-            {legSummary(f.c) && <> · {legSummary(f.c)}</>}
-            {sleepNote ? <> · {sleepNote}</> : f.to !== "blr" && <> · sleep {elev(f.alt)}</>}
-          </span>
-          {(f.ams || notes.length > 0) && (
-            <span className="day-flags">
-              {f.ams && <span className={"flag " + f.ams}>+{fmtNum(f.gain)} m ({ft(f.gain)} ft) above 3,000 m</span>}
-              {notes.length > 0 && <span className={"notes" + (warn ? " warn" : "")}>{notes.length} {notes.length > 1 ? "notes" : "note"}</span>}
+        <button
+          className="day-head"
+          aria-expanded={open}
+          aria-labelledby={uid + "t"}
+          aria-describedby={uid + "m " + (hasFlags ? uid + "f " : "") + uid + "p"}
+          title={open ? "Hide details" : more}
+          onClick={() => setOpen((v) => !v)}
+        >
+          <span className="day-text">
+            <span className="day-title" id={uid + "t"}>
+              <span className="sr-only">Day {f.day}: </span>
+              {f.c.title}
             </span>
-          )}
-          <span className="day-more" aria-hidden>
-            {open ? "Hide details" : f.c.legs.length ? "Costs, route and notes" : "Costs and notes"}
-            <motion.span className="chev" animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.2 }}>
-              <Icon name="down" size={14} />
-            </motion.span>
+            <span className="day-meta" id={uid + "m"}>
+              {date && <>{fmtDate(date)} · </>}
+              {routeNames(f.c, f.to)}
+              {legSummary(f.c) && <> · {legSummary(f.c)}</>}
+              {sleepNote ? <> · {sleepNote}</> : f.to !== D.home.id && <> · sleep {elev(f.alt)}</>}
+            </span>
+            {hasFlags && (
+              <span className="day-flags" id={uid + "f"}>
+                {f.ams && <span className={"flag " + f.ams}>+{fmtNum(f.gain)} m ({ft(f.gain)} ft) above 3,000 m</span>}
+                {notes.length > 0 && <span className={"notes" + (warn ? " warn" : "")}>{notes.length} {notes.length > 1 ? "notes" : "note"}</span>}
+              </span>
+            )}
+          </span>
+          <span className="day-side">
+            <span className="day-price" id={uid + "p"}>
+              <span className="price-main">
+                {cc.edited && <span className="edited-dot" title="Edited price" />}
+                {money(cc.v)}
+              </span>
+              <small>{npr(st, cc.v)}</small>
+            </span>
+            <span className="disc" aria-hidden>
+              <motion.span className="chev" animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.2 }}>
+                <Icon name="down" size={14} />
+              </motion.span>
+            </span>
           </span>
         </button>
         <AnimatePresence initial={false}>
@@ -525,13 +571,6 @@ function DayRow({ f }: { f: Day }) {
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
-      <div className="day-price">
-        <span className="price-main">
-          {cc.edited && <span className="edited-dot" title="Edited price" />}
-          {money(cc.v)}
-        </span>
-        <small>{npr(st, cc.v)}</small>
       </div>
     </div>
   );
@@ -643,7 +682,7 @@ function DayDetail({ f }: { f: Day }) {
           </>
         )}
         <p className="detail-links">
-          {f.to !== "blr" && (
+          {f.to !== D.home.id && (
             <button className="link" onClick={() => ui.open({ kind: "place", id: f.to })}>
               About {P(f.to).name}
             </button>
@@ -695,12 +734,52 @@ function ArrivalCard({ f }: { f: Day }) {
         <p className="eyebrow">Arrive · {elev(p.alt)}</p>
         <h3>{p.name}</h3>
         <p>{p.blurb}</p>
-        {p.facts[0] && <p className="story">{p.facts[0]}</p>}
+        {p.story ? (
+          <button className="tale-teaser" onClick={() => ui.open({ kind: "place", id: f.to, at: "story" })}>
+            <span className="eyebrow">The story · {p.story.title}</span>
+            <span className="tale-hook">{p.story.hook}</span>
+            <span className="tale-read">
+              Read the story <Icon name="arrow" size={14} />
+            </span>
+          </button>
+        ) : (
+          p.facts[0] && <p className="story">{p.facts[0]}</p>
+        )}
         <button className="link" onClick={() => ui.open({ kind: "place", id: f.to })}>
           More about {p.name} <Icon name="arrow" size={14} />
         </button>
       </div>
     </motion.div>
+  );
+}
+
+/** Places a day walks or drives through without a night: one compact row each. */
+function OnTheWay({ ids }: { ids: string[] }) {
+  const ui = useUI();
+  return (
+    <div className="passing">
+      <p className="eyebrow">On the way</p>
+      <ul>
+        {ids.map((id) => {
+          const p = P(id);
+          const line = p.story?.hook || p.origin || p.facts[0] || p.blurb;
+          return (
+            <li key={id}>
+              <button className="pass" onClick={() => ui.open({ kind: "place", id, at: p.story ? "story" : undefined })}>
+                <img src={photo(id)} alt="" loading="lazy" decoding="async" />
+                <span className="pass-text">
+                  <span className="pass-name">
+                    {p.name} <small>{elev(p.alt)}</small>
+                  </span>
+                  {line && <span className="pass-line">{line}</span>}
+                </span>
+                <Icon name="right" size={16} />
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }
 

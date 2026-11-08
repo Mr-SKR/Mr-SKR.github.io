@@ -10,21 +10,40 @@ import { D } from "./data";
 import type { Card, Choices, CostItem, Day, Metrics, Place, Road, TripState } from "./types";
 
 export function P(id: string): Place {
-  return (
-    D.places[id] || {
-      name: id,
-      short: id,
-      alt: 0,
-      ll: [0, 0],
-      map: [0, 0],
-      label: "right",
-      region: "gateway",
-      blurb: "",
-      facts: [],
-      notes: {},
-      wiki: "",
-    }
-  );
+  if (D.places[id]) return D.places[id];
+  const blank: Place = {
+    name: id,
+    short: id,
+    alt: 0,
+    ll: [0, 0],
+    map: [0, 0],
+    label: "right",
+    region: "gateway",
+    blurb: "",
+    facts: [],
+    notes: {},
+    wiki: "",
+  };
+  return id === D.home.id ? { ...blank, ...D.home } : blank;
+}
+
+/** Every stop a card touches, in order: each leg's ends, with the places the
+ *  first leg walks through (`via`) between its two ends. */
+export function cardStops(c: Card): string[] {
+  return c.legs.flatMap((l, i) => (i === 0 ? [l[0], ...(c.via || []), l[1]] : [l[0], l[1]]));
+}
+
+/* The trail between two stops, waypoint by waypoint. Going up follows the
+   ladder in the data; coming down, the trail leaves the valley at Chhomrong
+   for Jhinu Danda and the road head at Motkyu. */
+const DOWN_LADDER = ["motkyu", "jhinu", "chhomrong", "sinuwa", "bamboo", "dovan", "himalaya", "deurali", "mbc", "abc"];
+export function trailBetween(a: string, b: string): string[] {
+  for (const lad of [D.trailLadder, DOWN_LADDER]) {
+    const i = lad.indexOf(a);
+    const j = lad.indexOf(b);
+    if (i >= 0 && j >= 0 && i !== j) return i < j ? lad.slice(i + 1, j + 1) : lad.slice(j, i).reverse();
+  }
+  return [b];
 }
 
 /* ================================================================== */

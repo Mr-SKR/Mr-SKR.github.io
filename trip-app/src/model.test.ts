@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { allChoices, applyGoal, blockOf, addonCost, cardCost, decodeShare, defaultState, encodeShare, importShare, goalChoices, matchingGoal, metrics, MY_PLAN, quickPick, sanitize, shareOf, shareState, suggestions } from "./model";
+import { allChoices, applyGoal, blockOf, addonCost, cardCost, decodeShare, defaultState, encodeShare, importShare, goalChoices, matchingGoal, metrics, MY_PLAN, quickPick, P, sanitize, shareOf, shareState, suggestions, trailBetween } from "./model";
 import { moneyShort } from "./format";
+import { D } from "./data";
 
 const st = defaultState();
 
@@ -241,6 +242,23 @@ describe("goals", () => {
 
   it("every day belongs to a block", () => {
     for (const c of allChoices()) metrics(st, c).flat.forEach((f) => expect(blockOf(f.id), f.id).toBeDefined());
+  });
+});
+
+describe("places", () => {
+  it("lists a card's walk-through places in trail order, inside its first leg", () => {
+    Object.entries(D.cards).forEach(([id, c]) => {
+      if (!c.via) return;
+      const trail = trailBetween(c.legs[0][0], c.legs[0][1]);
+      const at = c.via.map((v) => trail.indexOf(v));
+      expect(at.every((i, k) => i >= 0 && i < trail.length - 1 && (k === 0 || i > at[k - 1])), id).toBe(true);
+    });
+  });
+
+  it("keeps home on the route but out of the places", () => {
+    expect(D.places[D.home.id]).toBeUndefined();
+    expect(P(D.home.id).name).toBe("Bengaluru");
+    expect(P(D.home.id).ll).toEqual(D.home.ll);
   });
 });
 

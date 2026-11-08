@@ -58,6 +58,9 @@ export default function RealMap() {
         .bindTooltip(p.name + " · " + elev(p.alt))
         .on("click", () => ui.open({ kind: "place", id }));
     });
+    L.circleMarker(D.home.ll, { radius: 6, color: "#fff", weight: 2, fillColor: "#0f1720", fillOpacity: 1 })
+      .addTo(layer)
+      .bindTooltip(D.home.name + " · home");
     return () => {
       layer.remove();
     };

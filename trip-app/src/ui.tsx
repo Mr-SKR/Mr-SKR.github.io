@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 export type SheetReq =
-  | { kind: "place"; id: string }
+  | { kind: "place"; id: string; at?: "story" }
   | { kind: "addon"; id: string }
   | { kind: "settings" }
   | { kind: "share"; url: string };

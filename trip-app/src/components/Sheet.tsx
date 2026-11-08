@@ -64,7 +64,7 @@ export function Sheet() {
 function SheetContent({ r }: { r: SheetReq }) {
   switch (r.kind) {
     case "place":
-      return <PlaceSheet key={r.id} id={r.id} />;
+      return <PlaceSheet key={r.id} id={r.id} at={r.at} />;
     case "addon":
       return <AddonPrice id={r.id} />;
     case "settings":
