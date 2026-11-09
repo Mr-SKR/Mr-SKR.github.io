@@ -1,9 +1,11 @@
 import { motion, useReducedMotion, useScroll, useTransform } from "motion/react";
-import { useLayoutEffect, useMemo, useRef } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type Ref } from "react";
 import { D } from "../data";
 import { ago, dayDate, elev, isoDate, parseDate, photo } from "../format";
 import { cardStops, climateFor, P } from "../model";
 import { useTrip } from "../store";
+import type { StoryBody } from "../types";
+import { useOnline } from "../ui";
 import { useWeather, wxWord } from "../weather";
 
 export function useRoutePlaces() {
@@ -23,14 +25,35 @@ export function useRoutePlaces() {
   }, [m.flat]);
 }
 
+/* The story bodies are a third of the plan's text and only read here, so
+   they come in their own chunk on first use (precached, so offline too). */
+let stories: Record<string, StoryBody> | null = null;
+const loadStories = () => import("../stories").then((m) => (stories = m.STORIES));
+
+/** Every story body, once loaded; null until then, or for a place with no stories. */
+function useStoryBodies(id: string) {
+  const [all, setAll] = useState(stories);
+  useEffect(() => {
+    if (all || !P(id).stories.length) return;
+    let live = true;
+    loadStories().then((s) => live && setAll(s));
+    return () => {
+      live = false;
+    };
+  }, [id, all]);
+  return all;
+}
+
 /* ---------------- The sheet for one place ---------------- */
 export function PlaceSheet({ id, at }: { id: string; at?: "story" }) {
   const { st, m } = useTrip();
   const p = P(id);
   const scroller = useRef<HTMLDivElement>(null);
   const storyRef = useRef<HTMLElement>(null);
+  const bodies = useStoryBodies(id);
   // Opened from "Read the story": the sheet slides in already at the story.
   // The photo above it has a fixed height, so its place is known before paint.
+  // The stories' headings are there at once; their bodies fill in below.
   useLayoutEffect(() => {
     const box = scroller.current;
     const el = storyRef.current;
@@ -72,33 +95,16 @@ export function PlaceSheet({ id, at }: { id: string; at?: "story" }) {
           ))}
         </div>
 
-        {p.story && (
-          <article className="tale" ref={storyRef} aria-labelledby={"tale-" + id}>
-            <p className="eyebrow">The story</p>
-            <h3 className="tale-title" id={"tale-" + id}>
-              {p.story.title}
-            </h3>
-            {p.story.parts.map((part) => (
-              <section key={part.h}>
-                <h4 className="tale-h">{part.h}</h4>
-                {part.p.map((t, i) => (
-                  <p key={i}>{t}</p>
-                ))}
-              </section>
-            ))}
-            <p className="tale-sources">
-              Sources:{" "}
-              {p.story.sources.map((s, i) => (
-                <span key={s.url}>
-                  {i > 0 && " · "}
-                  <a href={s.url} target="_blank" rel="noopener">
-                    {s.label}
-                  </a>
-                </span>
-              ))}
-            </p>
-          </article>
-        )}
+        {p.stories.map((story, i) => (
+          <Tale
+            key={story.id}
+            ref={i === 0 ? storyRef : undefined}
+            title={story.title}
+            label={p.stories.length > 1 ? "Story " + (i + 1) + " of " + p.stories.length : "The story"}
+            id={story.id}
+            body={bodies?.[story.id]}
+          />
+        ))}
 
         <dl className="facts-list">
           {p.origin && (
@@ -147,8 +153,42 @@ export function PlaceSheet({ id, at }: { id: string; at?: "story" }) {
   );
 }
 
+function Tale({ ref, id, title, label, body }: { ref?: Ref<HTMLElement>; id: string; title: string; label: string; body?: StoryBody }) {
+  return (
+    <article className="tale" ref={ref} aria-labelledby={"tale-" + id}>
+      <p className="eyebrow">{label}</p>
+      <h3 className="tale-title" id={"tale-" + id}>
+        {title}
+      </h3>
+      {!body && <p className="muted">Loading the story.</p>}
+      {body?.parts.map((part) => (
+        <section key={part.h}>
+          <h4 className="tale-h">{part.h}</h4>
+          {part.p.map((t, i) => (
+            <p key={i}>{t}</p>
+          ))}
+        </section>
+      ))}
+      {body && (
+        <p className="tale-sources">
+          Sources:{" "}
+          {body.sources.map((s, i) => (
+            <span key={s.url}>
+              {i > 0 && " · "}
+              <a href={s.url} target="_blank" rel="noopener">
+                {s.label}
+              </a>
+            </span>
+          ))}
+        </p>
+      )}
+    </article>
+  );
+}
+
 function Weather({ id, start, night }: { id: string; start: string | null; night?: number }) {
   const wx = useWeather();
+  const online = useOnline();
   const w = wx?.d[id];
   const today = isoDate(new Date());
   const tripDay = night ? dayDate(start, night) : null;
@@ -177,11 +217,11 @@ function Weather({ id, start, night }: { id: string; start: string | null; night
           </div>
           <p className="muted small">
             Forecast from Open-Meteo, saved {ago(wx.at)}
-            {navigator.onLine ? "" : " (offline)"}.
+            {online ? "" : " (offline)"}.
           </p>
         </>
       ) : (
-        <p className="muted small">{navigator.onLine ? "Loading the forecast." : "Go online once to keep a forecast for offline use."}</p>
+        <p className="muted small">{online ? "Loading the forecast." : "Go online once to keep a forecast for offline use."}</p>
       )}
       <div className="scroll-x">
         <table className="climate">

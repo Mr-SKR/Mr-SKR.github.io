@@ -1,6 +1,6 @@
 import { AnimatePresence, motion, useReducedMotion, useScroll, useTransform } from "motion/react";
 import { useMemo, useRef, useState } from "react";
-import { DAY_MS, daysBetween, fmtDate, isoDate, parseDate, todayStart } from "../format";
+import { countdown, fmtDate, isoDate, parseDate, todayStart } from "../format";
 import { useTrip } from "../store";
 import { useNow } from "../ui";
 import { Icon } from "./Icon";
@@ -175,19 +175,17 @@ function Countdown() {
     );
   }
 
-  const diff = start.getTime() - now;
-  const dayN = daysBetween(start, todayStart()) + 1;
+  const cd = countdown(start, now, m.days);
   const change = (
     <button className="cd-change" onClick={pick}>
       Change date
     </button>
   );
 
-  if (diff <= 0) {
-    const onTrail = dayN <= m.days;
+  if (cd.kind !== "before") {
     return (
       <div className="cd">
-        <p className="cd-status">{onTrail ? <>Day {dayN} of {m.days} · on the trail</> : <>Back home · welcome back</>}</p>
+        <p className="cd-status">{cd.kind === "trail" ? <>Day {cd.day} of {m.days} · on the trail</> : <>Back home · welcome back</>}</p>
         <p className="cd-foot">
           Left {fmtDate(start, true)} · {change}
         </p>
@@ -197,10 +195,10 @@ function Countdown() {
   }
 
   const units: [number, string, number][] = [
-    [Math.floor(diff / DAY_MS), "days", 2],
-    [Math.floor(diff / 3600e3) % 24, "hours", 2],
-    [Math.floor(diff / 60e3) % 60, "minutes", 2],
-    [Math.floor(diff / 1e3) % 60, "seconds", 2],
+    [cd.days, "days", 2],
+    [cd.hours, "hours", 2],
+    [cd.minutes, "minutes", 2],
+    [cd.seconds, "seconds", 2],
   ];
   return (
     <div className="cd" role="timer" aria-label={"Departure in " + units[0][0] + " days"}>

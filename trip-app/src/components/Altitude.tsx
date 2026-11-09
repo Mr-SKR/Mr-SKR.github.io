@@ -4,7 +4,7 @@ import { D } from "../data";
 import { elev, fmtNum, ft } from "../format";
 import { dayBlocks, P, trailBetween } from "../model";
 import { useTrip } from "../store";
-import { useUI } from "../ui";
+import { arrowPick, rovingTab, useUI } from "../ui";
 
 const RealMap = lazy(() => import("./RealMap"));
 
@@ -21,15 +21,15 @@ export function AltitudeSection() {
             <h2>How high, how fast</h2>
             <p className="lead">Every place on the trail, from the jeep out of Pokhara to the jeep back. Altitude sickness comes from climbing too fast: nights that climb more than 500 m above 3,000 m show in amber or red.</p>
           </div>
-          <div className="seg" role="tablist" aria-label="View">
+          <div className="seg" role="tablist" aria-label="View" onKeyDown={arrowPick}>
             {(
               [
                 ["profile", "Profile"],
                 ["map", "Trail map"],
                 ["real", "Real map"],
               ] as [View, string][]
-            ).map(([k, label]) => (
-              <button key={k} role="tab" aria-selected={view === k} onClick={() => setView(k)}>
+            ).map(([k, label], i) => (
+              <button key={k} role="tab" aria-selected={view === k} tabIndex={rovingTab(view === k, i, true)} onClick={() => setView(k)}>
                 {label}
                 {view === k && <motion.span className="seg-pill" layoutId="alt-seg" transition={{ type: "spring", stiffness: 420, damping: 36 }} />}
               </button>

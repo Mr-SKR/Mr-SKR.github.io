@@ -63,6 +63,30 @@ export function dayDate(start: string | null, day: number) {
   return s ? addDays(s, day - 1) : null;
 }
 
+export type Countdown =
+  | { kind: "before"; days: number; hours: number; minutes: number; seconds: number }
+  | { kind: "trail"; day: number }
+  | { kind: "back" };
+
+/**
+ * Where `now` falls against a trip of `days` days leaving at local midnight on
+ * `start`: counting down to it, on day N of it, or back home.
+ */
+export function countdown(start: Date, now: number, days: number): Countdown {
+  const diff = start.getTime() - now;
+  if (diff > 0)
+    return {
+      kind: "before",
+      days: Math.floor(diff / DAY_MS),
+      hours: Math.floor(diff / 3600e3) % 24,
+      minutes: Math.floor(diff / 60e3) % 60,
+      seconds: Math.floor(diff / 1e3) % 60,
+    };
+  const n = new Date(now);
+  const day = daysBetween(start, new Date(n.getFullYear(), n.getMonth(), n.getDate())) + 1;
+  return day <= days ? { kind: "trail", day } : { kind: "back" };
+}
+
 export function fmtDate(d: Date, withYear = false) {
   return d.toLocaleDateString("en-IN", withYear ? { day: "numeric", month: "short", year: "numeric" } : { weekday: "short", day: "numeric", month: "short" });
 }

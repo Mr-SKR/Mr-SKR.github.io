@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { allChoices, applyGoal, blockOf, addonCost, cardCost, decodeShare, defaultState, encodeShare, importShare, goalChoices, matchingGoal, metrics, MY_PLAN, quickPick, P, sanitize, shareOf, shareState, suggestions, trailBetween } from "./model";
+import { allChoices, applyGoal, blockOf, addonCost, cardCost, decodeShare, shareCodeFromHash, defaultState, encodeShare, importShare, goalChoices, matchingGoal, metrics, MY_PLAN, quickPick, P, sanitize, shareOf, shareState, suggestions, trailBetween } from "./model";
 import { moneyShort } from "./format";
 import { D } from "./data";
+import indexHtml from "../index.html?raw";
 
 const st = defaultState();
 
@@ -176,6 +177,23 @@ describe("share links", () => {
     expect(metrics(back).cost).toBe(metrics(s).cost);
   });
 
+  it("replaces the visitor's own price edits, so the total is the sender's", async () => {
+    const visitor = { ...st, edits: { "arr-ktm": { [D.cards["arr-ktm"].costs[0][0]]: 99999 } } };
+    const back = importShare(visitor, await decodeShare(await encodeShare(shareState(st))));
+    expect(back.edits).toEqual({});
+    expect(metrics(back).cost).toBe(metrics(st).cost);
+  });
+
+  it("reads a link from the location hash, and nothing else", async () => {
+    const code = await encodeShare(shareState(st));
+    expect(shareCodeFromHash("#b=" + code)).toBe(code);
+    expect(shareCodeFromHash("#route")).toBeNull();
+    expect(shareCodeFromHash("#b=x123")).toBeNull();
+    expect(shareCodeFromHash("#b=" + code + "&x=1")).toBeNull();
+    const back = importShare(defaultState(), await decodeShare(shareCodeFromHash("#b=" + code)!));
+    expect(metrics(back).cost).toBe(metrics(st).cost);
+  });
+
   it("drops edits and add-ons that are not real numbers, cards or items", () => {
     const bad = {
       v: 2,
@@ -269,5 +287,57 @@ describe("moneyShort", () => {
     expect(moneyShort(75700)).toBe("₹76K");
     expect(moneyShort(99999)).toBe("₹1L");
     expect(moneyShort(123456)).toBe("₹1.23L");
+  });
+});
+
+describe("stored state from older builds", () => {
+  it("keeps what is still valid and fills in the rest", () => {
+    const old = { choices: { arrive: "gop", pace: "slow-ish", buffer: "yes" }, addons: ["porter", "gone-addon"], people: 2.7, rate: "1.6", road: "plane", start: "9 Oct" };
+    const back = sanitize(old);
+    expect(back.choices).toEqual({ ...MY_PLAN, arrive: "gop" });
+    expect(back.addons).toEqual(["porter"]);
+    expect([back.people, back.rate, back.road, back.start]).toEqual([2, D.inrToNpr, "bus", null]);
+    expect(back.edits).toEqual({});
+  });
+
+  it("falls back to my plan for anything that is not a state", () => {
+    for (const raw of [null, 7, "x", [], { choices: null }]) expect(sanitize(raw)).toEqual(defaultState());
+  });
+});
+
+describe("metrics", () => {
+  it("gives the same answer from its cache as fresh, and follows every priced field", () => {
+    const a = metrics(st);
+    expect(metrics(structuredClone(st))).toBe(a);
+    expect(metrics({ ...st, people: 2 }).cost).not.toBe(a.cost);
+    const day = a.flat[0];
+    expect(metrics({ ...st, edits: { [day.id]: { [day.c.costs[0][0]]: 99999 } } }).cost).toBeGreaterThan(a.cost);
+    expect(metrics({ ...st, road: "car" }).cost).not.toBe(a.cost);
+    expect(metrics({ ...st, addons: [] }).cost).toBeLessThan(a.cost);
+  });
+});
+
+describe("index.html", () => {
+  // The no-JavaScript summary describes my plan in words; the numbers are
+  // filled in at build time. If MY_PLAN changes, rewrite that sentence too.
+  it("describes my plan, and takes its numbers from the build", () => {
+    expect(MY_PLAN).toEqual({ arrive: "ktm-fly", ktmDay: true, pokhara: 2, pace: "standard", down: "slow", buffer: true, home: "gop" });
+    const html = indexHtml;
+    expect(html).toContain("%PLAN_DAYS% days");
+    expect(html).toContain("INR %PLAN_COST%");
+    expect(html).not.toMatch(/\b1[0-9]-day\b|INR \d/);
+  });
+});
+
+describe("stories", () => {
+  it("every story has a body with sources, and every body belongs to a story", async () => {
+    const { STORIES } = await import("./stories");
+    const ids = Object.values(D.places).flatMap((p) => p.stories.map((s) => s.id));
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(Object.keys(STORIES).sort()).toEqual([...ids].sort());
+    for (const id of ids) {
+      expect(STORIES[id].parts.length).toBeGreaterThan(0);
+      expect(STORIES[id].sources.length).toBeGreaterThan(0);
+    }
   });
 });

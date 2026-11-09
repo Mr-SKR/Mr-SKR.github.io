@@ -32,12 +32,17 @@ export interface Link {
   url: string;
 }
 
-/** A longer read about a place, in short titled parts. */
+/** A longer read about a place. Its body (`StoryBody`) lives in stories.ts under `id`. */
 export interface Story {
+  id: string;
   /** A headline, like "Annapurna, 1950". */
   title: string;
   /** One line to make you want to read it, shown on the day's arrival card. */
   hook: string;
+}
+
+/** The story itself, in short titled parts. */
+export interface StoryBody {
   parts: { h: string; p: string[] }[];
   sources: Link[];
 }
@@ -58,7 +63,8 @@ export interface Place {
   notes: { stay?: string; network?: string; atm?: string };
   wiki: string;
   links?: Link[];
-  story?: Story;
+  /** The first is the one the route's arrival card leads with. */
+  stories: Story[];
 }
 
 export interface Card {
@@ -121,14 +127,6 @@ export interface TripData {
   photoCredits: Record<string, [string, string, string]>;
 }
 
-/** A slot on the board: a swappable stage (g + o) or a single day card (c). */
-export interface Slot {
-  u: string;
-  g?: string;
-  o?: number;
-  c?: string;
-}
-
 /** The handful of decisions the planner offers. Everything else follows from these. */
 export interface Choices {
   arrive: "gop" | "ktm-bus" | "ktm-fly";
@@ -155,7 +153,6 @@ export interface TripState {
 
 export interface Day {
   si: number;
-  ci: number;
   id: string;
   c: Card;
   from: string;

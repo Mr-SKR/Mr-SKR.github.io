@@ -1,11 +1,11 @@
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { D } from "../data";
 import { elev } from "../format";
 import { P } from "../model";
 import { useTrip } from "../store";
-import { useUI } from "../ui";
+import { useOnline, useUI } from "../ui";
 
 /** Leaflet + OpenTopoMap. Loaded as its own chunk only when this view is opened. */
 export default function RealMap() {
@@ -13,7 +13,7 @@ export default function RealMap() {
   const ui = useUI();
   const el = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
-  const [offline] = useState(() => !navigator.onLine);
+  const offline = !useOnline();
 
   useEffect(() => {
     if (!el.current) return;

@@ -2,9 +2,10 @@ import { AnimatePresence, motion, useSpring, useTransform } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { fmtNum, ft, moneyShort } from "../format";
 import { useTrip } from "../store";
-import { useUI } from "../ui";
+import { arrowMenu, useUI } from "../ui";
 import { Icon } from "./Icon";
-import { saveOffline, shareRoute } from "../actions";
+import { offlineSavedAt, saveOffline, shareRoute } from "../actions";
+import { ago } from "../format";
 
 export const SECTIONS = [
   ["route", "Route"],
@@ -26,6 +27,7 @@ export function StickyBar() {
   const [active, setActive] = useState<string>("route");
   const [menu, setMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   // Appears once the hero has scrolled away.
   useEffect(() => {
@@ -51,10 +53,16 @@ export function StickyBar() {
 
   useEffect(() => {
     if (!menu) return;
+    // The first item takes focus as the menu opens, so the arrows work at once.
+    menuRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
     const onDown = (e: PointerEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenu(false);
     };
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setMenu(false);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setMenu(false);
+      triggerRef.current?.focus();
+    };
     document.addEventListener("pointerdown", onDown);
     document.addEventListener("keydown", onKey);
     return () => {
@@ -62,6 +70,9 @@ export function StickyBar() {
       document.removeEventListener("keydown", onKey);
     };
   }, [menu]);
+
+  // Read when the menu opens, so it is current without a timer.
+  const savedAt = menu ? offlineSavedAt() : null;
 
   const pick = (fn: () => void) => () => {
     setMenu(false);
@@ -104,7 +115,7 @@ export function StickyBar() {
             <Icon name="undo" />
           </button>
           <div className="menu-wrap" ref={menuRef}>
-            <button className="icon-btn" aria-label="More" aria-expanded={menu} aria-haspopup="menu" onClick={() => setMenu((v) => !v)}>
+            <button ref={triggerRef} className="icon-btn" aria-label="More" aria-expanded={menu} aria-haspopup="menu" onClick={() => setMenu((v) => !v)}>
               <Icon name="more" size={20} />
             </button>
             <AnimatePresence>
@@ -112,6 +123,7 @@ export function StickyBar() {
                 <motion.div
                   className="menu"
                   role="menu"
+                  onKeyDown={arrowMenu}
                   initial={{ opacity: 0, y: -6, scale: 0.98 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -6, scale: 0.98 }}
@@ -122,6 +134,7 @@ export function StickyBar() {
                   </button>
                   <button role="menuitem" onClick={pick(() => saveOffline(ui))}>
                     <Icon name="download" /> Save for offline
+                    {savedAt != null && <small className="menu-sub">saved {ago(savedAt)}</small>}
                   </button>
                   <button role="menuitem" onClick={pick(() => ui.open({ kind: "settings" }))}>
                     <Icon name="split" /> People and exchange rate

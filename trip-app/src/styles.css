@@ -816,6 +816,12 @@ textarea {
   font-size: 14px;
 }
 
+.menu-sub {
+  margin-left: auto;
+  color: var(--stone);
+  font-size: 12px;
+}
+
 .menu button:hover,
 .menu button:focus-visible {
   background: var(--mist);

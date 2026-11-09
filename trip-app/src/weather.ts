@@ -75,6 +75,10 @@ export function useWeather() {
   );
   useEffect(() => {
     fetchWeather();
+    // Back in signal on the trail: pick up a fresher forecast.
+    const on = () => fetchWeather();
+    window.addEventListener("online", on);
+    return () => window.removeEventListener("online", on);
   }, []);
   return wx;
 }

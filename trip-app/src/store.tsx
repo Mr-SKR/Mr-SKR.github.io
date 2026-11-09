@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useState, type ReactNode } from "react";
-import { decodeShare, importShare, metrics, sanitize, type ShareV2 } from "./model";
+import { decodeShare, importShare, metrics, sanitize, shareCodeFromHash, type ShareV2 } from "./model";
 import type { Metrics, TripState } from "./types";
 import type { Plan } from "./model";
 
@@ -124,10 +124,10 @@ export function TripProvider({ children }: { children: ReactNode }) {
   // only the hash, with no reload.
   useEffect(() => {
     const take = () => {
-      const m = location.hash.match(/^#b=([zj][A-Za-z0-9_-]+)$/);
-      if (!m) return;
+      const code = shareCodeFromHash(location.hash);
+      if (!code) return;
       history.replaceState(null, "", location.pathname + location.search);
-      decodeShare(m[1])
+      decodeShare(code)
         .then((sh) => {
           if (!sh || sh.v !== 2) throw new Error("bad share");
           dispatch({ type: "import", sh });

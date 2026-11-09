@@ -1,30 +1,8 @@
 import { motion } from "motion/react";
 import { D } from "../data";
-import { addDays, fmtDate, parseDate, todayStart } from "../format";
+import { addDays, fmtDate, isoDate, parseDate, todayStart } from "../format";
+import { cleanPrep, type PrepState } from "../prep";
 import { KEYS, useLocal, useTrip } from "../store";
-
-interface PrepState {
-  done: Record<string, boolean>;
-  rent: Record<string, "own" | "rent">;
-  ms: Record<string, boolean>;
-}
-
-/** Ticks keyed by checklist or milestone id, rebuilt from whatever storage holds. */
-function cleanPrep(raw: unknown): PrepState {
-  const out: PrepState = { done: {}, rent: {}, ms: {} };
-  if (!raw || typeof raw !== "object") return out;
-  const r = raw as Record<string, unknown>;
-  const obj = (x: unknown) => (x && typeof x === "object" ? Object.entries(x as Record<string, unknown>) : []);
-  for (const [k, v] of obj(r.done)) if (v === true) out.done[k] = true;
-  for (const [k, v] of obj(r.rent)) if (v === "own" || v === "rent") out.rent[k] = v;
-  for (const [k, v] of obj(r.ms)) {
-    if (v !== true) continue;
-    // Milestone ticks used to be keyed by position in D.milestones.
-    const id = /^\d+$/.test(k) ? D.milestones[Number(k)]?.id : k;
-    if (id) out.ms[id] = true;
-  }
-  return out;
-}
 
 export function usePrep() {
   return useLocal<PrepState>(KEYS.prep, { done: {}, rent: {}, ms: {} }, cleanPrep);
@@ -61,7 +39,7 @@ export function PrepSection() {
             <div className="prep-dates">
               <label className="date-inline">
                 <span>Leaving</span>
-                <input type="date" value={st.start || ""} aria-label="Departure date" onChange={(e) => update((d) => void (d.start = e.target.value || null))} />
+                <input type="date" min={isoDate(today)} value={st.start || ""} aria-label="Departure date" onChange={(e) => update((d) => void (d.start = e.target.value || null))} />
               </label>
               {end ? (
                 <span className="muted">

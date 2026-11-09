@@ -21,6 +21,7 @@ export function P(id: string): Place {
     region: "gateway",
     blurb: "",
     facts: [],
+    stories: [],
     notes: {},
     wiki: "",
   };
@@ -239,7 +240,7 @@ export function flatten(plan: Plan): Day[] {
   plan.ids.forEach((id, i) => {
     const c = card(id);
     if (!c) return;
-    out.push({ si: i, ci: 0, id, c, from: c.from as string, to: c.to as string, day: out.length + 1, alt: 0, gain: 0 });
+    out.push({ si: i, id, c, from: c.from as string, to: c.to as string, day: out.length + 1, alt: 0, gain: 0 });
   });
   out.forEach((f, i) => {
     const next = out[i + 1]?.c.nightBefore;
@@ -339,7 +340,27 @@ export function addonCost(st: Pick<TripState, "edits" | "people">, id: string, m
   return { unit, split, count, each: each(unit.v), v: each(unit.v) * count, lo: each(unit.lo) * count, hi: each(unit.hi) * count };
 }
 
+/*
+ * The page prices every alternative on every change (each option's delta,
+ * each goal), so the same plan is measured many times over. States are never
+ * mutated, so a result can be reused for as long as everything it reads (the
+ * choices and the priced fields; not the exchange rate) is the same. Callers
+ * must treat the result as read-only.
+ */
+const METRICS_CACHE = new Map<string, Metrics & { plan: Plan }>();
+const METRICS_CACHE_MAX = 500;
+
 export function metrics(st: TripState, choices: Choices = st.choices): Metrics & { plan: Plan } {
+  const key = JSON.stringify([choices, st.addons, st.edits, st.people, st.road, st.roads]);
+  const hit = METRICS_CACHE.get(key);
+  if (hit) return hit;
+  const m = measure(st, choices);
+  if (METRICS_CACHE.size >= METRICS_CACHE_MAX) METRICS_CACHE.delete(METRICS_CACHE.keys().next().value!);
+  METRICS_CACHE.set(key, m);
+  return m;
+}
+
+function measure(st: TripState, choices: Choices): Metrics & { plan: Plan } {
   const plan = buildPlan(choices);
   const flat = flatten(plan);
   const m: Metrics & { plan: Plan } = {
@@ -416,6 +437,8 @@ export function metrics(st: TripState, choices: Choices = st.choices): Metrics &
 
 /* ================================================================== */
 /* Quick picks: every combination is checked, so these are exact        */
+/* The page uses goals (below) instead; these brute-force answers are   */
+/* kept as the tests' reference for what the goals must land on.        */
 /* ================================================================== */
 export function allChoices(): Choices[] {
   let combos: Choices[] = [{ ...MY_PLAN }];
@@ -510,6 +533,11 @@ export async function encodeShare(sh: ShareV2): Promise<string> {
   return "j" + b64u(new TextEncoder().encode(json));
 }
 
+/** The share code in a location hash ("#b=z..."), or null when there is none. */
+export function shareCodeFromHash(hash: string): string | null {
+  return hash.match(/^#b=([zj][A-Za-z0-9_-]+)$/)?.[1] ?? null;
+}
+
 export async function decodeShare(code: string): Promise<ShareV2> {
   const bytes = unb64u(code.slice(1));
   if (code[0] === "z") {
@@ -528,7 +556,9 @@ export function importShare(st: TripState, sh: ShareV2): TripState {
     roads: sh.r ? sh.rs || {} : st.roads,
     choices: sh.c,
     addons: sh.a,
-    edits: { ...st.edits, ...(sh.e || {}) },
+    // The sender's prices replace the visitor's own, or the link would not
+    // reproduce the total it was shared with. Undo brings the old ones back.
+    edits: sh.e || {},
   });
 }
 

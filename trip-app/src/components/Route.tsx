@@ -2,10 +2,10 @@ import { AnimatePresence, motion, useReducedMotion, useScroll, useSpring, useTra
 import { useEffect, useId, useMemo, useRef, useState, type MouseEvent } from "react";
 import { D } from "../data";
 import { dayDate, elev, fmtDate, fmtNum, ft, legSummary, money, moneyShort, npr, photo, routeNames } from "../format";
-import { addonCost, addonUnit, BLOCKS, blockOption, blockShown, cardStops, dayBlocks, cardCost, costItems, goalChoices, hasRoadChoice, itemCost, GOALS, matchingGoal, metrics, MY_PLAN, myOption, P, type Block, type BlockOption, type Goal } from "../model";
+import { addonCost, addonUnit, BLOCKS, blockOption, blockShown, cardStops, dayBlocks, cardCost, costItems, goalChoices, hasRoadChoice, itemCost, GOALS, matchingGoal, metrics, MY_PLAN, myOption, P, sameChoices, type Block, type BlockOption, type Goal } from "../model";
 import { KEYS, useLocal, useTrip } from "../store";
 import type { Day } from "../types";
-import { useUI } from "../ui";
+import { arrowPick, rovingTab, useUI } from "../ui";
 import { Icon } from "./Icon";
 import { RoadPicker } from "./RoadPicker";
 
@@ -132,7 +132,8 @@ const lower = (t: string) => t.charAt(0).toLowerCase() + t.slice(1);
 /* Goal panel: total, what matters most, what changed                  */
 /* ================================================================== */
 function GoalPanel() {
-  const { st, m, update } = useTrip();
+  const { st, m, update, undo } = useTrip();
+  const ui = useUI();
   const [last, setLast] = useLocal<Goal | null>(KEYS.goal, null, (raw) => GOALS.find((g) => g.id === raw)?.id ?? null);
   const mine = useMemo(() => metrics(st, MY_PLAN), [st]);
   const active = useMemo(() => matchingGoal(st, last), [st, last]);
@@ -140,10 +141,14 @@ function GoalPanel() {
   const shown = GOALS.find((g) => g.id === (active || edited));
 
   const pick = (g: Goal) => {
+    const next = goalChoices(st, g);
     setLast(g);
+    if (sameChoices(next, st.choices)) return;
     update((d) => {
-      d.choices = goalChoices(d, g);
+      d.choices = next;
     });
+    // A goal replaces the visitor's own picks, so offer them back.
+    ui.toast("Plan set to “" + GOALS.find((x) => x.id === g)!.label + "”", { label: "Undo", run: undo });
   };
 
   // Blocks that differ from my plan, with what each change does on its own.
@@ -171,12 +176,13 @@ function GoalPanel() {
       </div>
 
       <p className="gp-ask">What matters most to you?</p>
-      <div className="goals" role="radiogroup" aria-label="What matters most">
-        {GOALS.map((g) => (
+      <div className="goals" role="radiogroup" aria-label="What matters most" onKeyDown={arrowPick}>
+        {GOALS.map((g, i) => (
           <button
             key={g.id}
             role="radio"
             aria-checked={active === g.id}
+            tabIndex={rovingTab(active === g.id, i, !!active)}
             className={"goal" + (active === g.id ? " on" : "") + (edited === g.id ? " edited" : "")}
             onClick={() => pick(g.id)}
           >
@@ -327,7 +333,7 @@ function BlockCard({
         </div>
         <h4 className="block-title">{b.title}</h4>
         {b.options && (
-          <div className="options" role="radiogroup" aria-label={b.title} style={{ gridTemplateColumns: `repeat(${b.options.length}, minmax(0, 1fr))` }}>
+          <div className="options" role="radiogroup" aria-label={b.title} onKeyDown={arrowPick} style={{ gridTemplateColumns: `repeat(${b.options.length}, minmax(0, 1fr))` }}>
             {b.options.map((o, i) => {
               const on = i === cur;
               return (
@@ -335,6 +341,7 @@ function BlockCard({
                   key={o.label}
                   role="radio"
                   aria-checked={on}
+                  tabIndex={rovingTab(on, i, cur >= 0)}
                   className={"option" + (on ? " on" : "") + (b.kind === "optional" && o.label === "Skip" ? " skip" : "")}
                   onClick={() => update((d) => void (d.choices = { ...d.choices, ...o.set }))}
                 >
@@ -466,7 +473,7 @@ function Extras() {
 }
 
 function PriceNote() {
-  const { st, m, update } = useTrip();
+  const { st, m, update, undo } = useTrip();
   const ui = useUI();
   // Only what the plan shows counts: edits to lines or days not in it stay put but are not news.
   const edited = m.flat.some((f) => cardCost(st, f.id, !!f.noBed).edited) || st.addons.some((id) => addonUnit(st, id).edited);
@@ -484,7 +491,7 @@ function PriceNote() {
             className="link"
             onClick={() => {
               update((d) => void (d.edits = {}));
-              ui.toast("Prices back to my defaults");
+              ui.toast("Prices back to my defaults", { label: "Undo", run: undo });
             }}
           >
             reset prices
@@ -717,6 +724,7 @@ function ArrivalCard({ f }: { f: Day }) {
   const y = useTransform(scrollYProgress, [0, 1], reduce ? ["0%", "0%"] : ["-8%", "8%"]);
   const p = P(f.to);
   const summit = f.to === "abc";
+  const lead = p.stories[0];
   return (
     <motion.div
       ref={ref}
@@ -734,12 +742,12 @@ function ArrivalCard({ f }: { f: Day }) {
         <p className="eyebrow">Arrive · {elev(p.alt)}</p>
         <h3>{p.name}</h3>
         <p>{p.blurb}</p>
-        {p.story ? (
+        {lead ? (
           <button className="tale-teaser" onClick={() => ui.open({ kind: "place", id: f.to, at: "story" })}>
-            <span className="eyebrow">The story · {p.story.title}</span>
-            <span className="tale-hook">{p.story.hook}</span>
+            <span className="eyebrow">The story · {lead.title}</span>
+            <span className="tale-hook">{lead.hook}</span>
             <span className="tale-read">
-              Read the story <Icon name="arrow" size={14} />
+              {p.stories.length > 1 ? "Read the " + p.stories.length + " stories" : "Read the story"} <Icon name="arrow" size={14} />
             </span>
           </button>
         ) : (
@@ -762,10 +770,10 @@ function OnTheWay({ ids }: { ids: string[] }) {
       <ul>
         {ids.map((id) => {
           const p = P(id);
-          const line = p.story?.hook || p.origin || p.facts[0] || p.blurb;
+          const line = p.stories[0]?.hook || p.origin || p.facts[0] || p.blurb;
           return (
             <li key={id}>
-              <button className="pass" onClick={() => ui.open({ kind: "place", id, at: p.story ? "story" : undefined })}>
+              <button className="pass" onClick={() => ui.open({ kind: "place", id, at: p.stories.length ? "story" : undefined })}>
                 <img src={photo(id)} alt="" loading="lazy" decoding="async" />
                 <span className="pass-text">
                   <span className="pass-name">

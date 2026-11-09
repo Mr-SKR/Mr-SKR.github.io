@@ -54,8 +54,12 @@ export async function saveOffline(ui: UILike) {
   );
   await fetchWeather(true);
   if (ok === urls.length) {
-    save(KEYS.ui, { offlineAt: Date.now() });
-    ui.toast("Saved. The whole plan works with no signal.");
+    // Other UI settings may share this key: add to them, never replace them.
+    const prev = load<unknown>(KEYS.ui, {});
+    save(KEYS.ui, { ...(prev && typeof prev === "object" ? prev : {}), offlineAt: Date.now() });
+    // Map tiles are not bulk-downloaded (OpenTopoMap asks apps not to), so be
+    // plain about what the real map can show.
+    ui.toast("Saved. The plan, photos, forecast and trail map work with no signal; the real map shows only areas you have viewed.");
   } else {
     ui.toast("Saved " + ok + " of " + urls.length + " photos. Try again on a better connection.");
   }
